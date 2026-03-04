@@ -18,14 +18,15 @@ export function useBtcPrice() {
         delay = 1000;
         ws.send(JSON.stringify({
           method: 'subscribe',
-          params: { channel: 'trade', symbol: ['BTC/USD'] },
+          params: { channel: 'ticker', symbol: ['BTC/USD'] },
         }));
       };
 
       ws.onmessage = (event) => {
         const msg = JSON.parse(event.data);
-        if (msg.channel === 'trade' && msg.data?.length) {
-          setBtcPrice(msg.data[msg.data.length - 1].price);
+        if (msg.channel === 'ticker' && msg.data?.length) {
+          const { bid, ask } = msg.data[0];
+          setBtcPrice((bid + ask) / 2);
         }
       };
 
