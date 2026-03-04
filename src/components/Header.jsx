@@ -18,7 +18,7 @@ export function Header({
               ? `$${btcPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
               : '—'}
           </span>
-          <span className="text-[9px] text-[#666c77]">Chainlink BTC/USD</span>
+          <span className="text-[9px] text-[#666c77]">Binance BTC/USD</span>
           <span
             className="inline-block h-1.5 w-1.5 rounded-full bg-[#f09000]"
             style={{ boxShadow: '0 0 4px #f09000' }}
