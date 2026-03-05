@@ -113,7 +113,7 @@ export function OrderEntry({
 
       {/* Geo-block notice */}
       {geoBlocked && (
-        <div className="mb-2 rounded-[2px] border border-[#e04f4f] bg-[#1a0d0d] px-2 py-1.5 text-[11px] text-[#e04f4f]">
+        <div className="mb-2 text-center text-[10px] text-[#555]">
           Trading is blocked in your region.
         </div>
       )}

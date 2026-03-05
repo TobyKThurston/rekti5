@@ -126,6 +126,19 @@ export function useStrikePrice() {
   const fetchingRef   = useRef(false);
 
   useEffect(() => {
+    const windowStartMs = Math.floor(Date.now() / 300_000) * 300_000;
+    fetch('/price-to-beat')
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data?.price != null && data.window_start === windowStartMs) {
+          setStrikePrice(data.price);
+          lastWindowRef.current = windowStartMs; // skip Chainlink lookup for this window
+        }
+      })
+      .catch(() => {}); // server unavailable on Vercel — polling loop handles it
+  }, []);
+
+  useEffect(() => {
     const check = async () => {
       const windowStartMs = Math.floor(Date.now() / 300_000) * 300_000;
       if (lastWindowRef.current === windowStartMs) return; // same window, skip

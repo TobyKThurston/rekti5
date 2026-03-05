@@ -25,7 +25,7 @@ export function TradingViewChart({ targetPrice = 64500 }) {
       containerRef.current.id = containerId;
 
       const widget = new window.TradingView.widget({
-        symbol: 'BINANCE:BTCUSDT',
+        symbol: 'BITSTAMP:BTCUSD',
         interval: '1',
         timezone: 'Etc/UTC',
         theme: 'dark',

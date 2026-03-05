@@ -35,6 +35,10 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/polymarket/, ''),
       },
+      '/price-to-beat': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+      },
     },
   },
 });

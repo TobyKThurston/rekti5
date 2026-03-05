@@ -1,4 +1,8 @@
+import http from 'node:http';
 import { WebSocketServer, WebSocket } from 'ws';
+import Database from 'better-sqlite3';
+import cron from 'node-cron';
+import { ethers } from 'ethers';
 
 const FRONTEND_PORT      = 3001;
 const CLOB_WS_URL        = 'wss://ws-subscriptions-clob.polymarket.com/ws/market';
@@ -17,10 +21,53 @@ let marketState = {
 let yesTokenId = null, noTokenId = null;
 let polyWs = null, reconnectTimer = null, reconnectDelay = 1_000;
 
+// ── SQLite DB ────────────────────────────────────────────────────────────────
+
+const db = new Database('resolution_prices.db');
+db.prepare(`CREATE TABLE IF NOT EXISTS resolution_prices (
+  window_start INTEGER PRIMARY KEY,
+  price REAL NOT NULL
+)`).run();
+
+// ── Chainlink price fetcher ───────────────────────────────────────────────────
+
+const clProvider = new ethers.providers.JsonRpcProvider('https://polygon-bor-rpc.publicnode.com/');
+const clContract = new ethers.Contract(
+  '0xc907E116054Ad103354f2D350FD2514433D57F6f',
+  ['function latestRoundData() view returns (uint80,int256,uint256,uint256,uint80)'],
+  clProvider);
+
+async function fetchAndStore() {
+  const windowStart = Math.floor(Date.now() / 300_000) * 300_000;
+  if (db.prepare('SELECT 1 FROM resolution_prices WHERE window_start = ?').get(windowStart)) return;
+  const [, answer] = await clContract.latestRoundData();
+  const price = answer.toNumber() / 1e8;
+  db.prepare('INSERT OR IGNORE INTO resolution_prices (window_start, price) VALUES (?, ?)').run(windowStart, price);
+  console.log(`[chainlink] stored ${price} for window ${new Date(windowStart).toISOString()}`);
+}
+
+// ── HTTP handler ──────────────────────────────────────────────────────────────
+
+function handleHttp(req, res) {
+  if (req.method === 'GET' && req.url === '/price-to-beat') {
+    const row = db.prepare('SELECT * FROM resolution_prices ORDER BY window_start DESC LIMIT 1').get();
+    res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+    res.end(JSON.stringify(row ?? null));
+  } else {
+    res.writeHead(404); res.end();
+  }
+}
+
 // ── Frontend WS server ───────────────────────────────────────────────────────
 
-const wss = new WebSocketServer({ port: FRONTEND_PORT });
-console.log(`[server] WS listening on ws://localhost:${FRONTEND_PORT}`);
+const httpServer = http.createServer(handleHttp);
+const wss = new WebSocketServer({ server: httpServer });
+httpServer.listen(FRONTEND_PORT, () =>
+  console.log(`[server] HTTP+WS on port ${FRONTEND_PORT}`));
+
+cron.schedule('*/5 * * * *', () =>
+  fetchAndStore().catch(e => console.error('[cron]', e.message)));
+fetchAndStore().catch(e => console.error('[startup]', e.message));
 
 wss.on('error', (err) => {
   console.error('[server] WSS error:', err.message);
