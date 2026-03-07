@@ -126,6 +126,7 @@ export function useStrikePrice() {
   const fetchingRef   = useRef(false);
 
   useEffect(() => {
+    if (import.meta.env.PROD) return; // no backend on Vercel — polling loop handles it
     const windowStartMs = Math.floor(Date.now() / 300_000) * 300_000;
     fetch('/price-to-beat')
       .then(r => r.ok ? r.json() : null)
@@ -135,7 +136,7 @@ export function useStrikePrice() {
           lastWindowRef.current = windowStartMs; // skip Chainlink lookup for this window
         }
       })
-      .catch(() => {}); // server unavailable on Vercel — polling loop handles it
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
