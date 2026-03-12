@@ -6,7 +6,6 @@ interface MarketInfoProps {
   market: Market | null;
   marketLoading: boolean;
   marketError: string | null;
-  countdown: number;
   countdownDisplay: string;
   countdownColor: string;
   marketStrikePrice: number | null;
@@ -19,7 +18,6 @@ export function MarketInfo({
   market,
   marketLoading,
   marketError,
-  countdown: _countdown,
   countdownDisplay,
   countdownColor,
   marketStrikePrice,

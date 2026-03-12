@@ -3,11 +3,8 @@
 interface OrderEntryProps {
   sizePct: number;
   setSizePct: (v: number) => void;
-  orderType: string;
-  setOrderType: (v: string) => void;
   amountValue: string;
   feeEstimate: string;
-  totalCost: string;
   upPayout: string;
   downPayout: string;
   buyYes: () => void;
@@ -26,8 +23,6 @@ interface OrderEntryProps {
 export function OrderEntry({
   sizePct,
   setSizePct,
-  orderType,
-  setOrderType,
   amountValue,
   feeEstimate,
   upPayout,
@@ -87,28 +82,6 @@ export function OrderEntry({
           </button>
         ))}
       </div>
-      <div className="mb-1.5 flex gap-1">
-        {['market', 'limit'].map((type) => (
-          <button
-            key={type}
-            onClick={() => setOrderType(type)}
-            className={`flex-1 rounded-[2px] border px-1.5 py-1 text-[11px] ${
-              orderType === type
-                ? 'border-[#f09000] bg-[#1a1400] text-[#f09000]'
-                : 'border-[#22242a] bg-[#1a1c20] text-[#666c77] hover:border-[#f09000] hover:text-[#f09000]'
-            }`}
-          >
-            {type}
-          </button>
-        ))}
-      </div>
-      {orderType === 'limit' && (
-        <input
-          type="text"
-          defaultValue="0.610"
-          className="mb-1.5 w-full rounded-[2px] border border-[#22242a] bg-[#1a1c20] px-1.5 py-1 text-[12px] text-[#e8e8e8] outline-none focus:border-[#f09000]"
-        />
-      )}
       <div className="mb-2 grid grid-cols-3 divide-x divide-[#22242a] rounded-[2px] border border-[#22242a] bg-[#1a1c20] text-[10px]">
         <div className="px-1.5 py-1">
           <div className="text-[#666c77]">Size</div>

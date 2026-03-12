@@ -12,13 +12,13 @@ import { useTriggerEngine }  from '@/hooks/useTriggerEngine';
 import { useStrikePrice }    from '@/hooks/useStrikePrice';
 import { useMarketHistory }  from '@/hooks/useMarketHistory';
 
+import { ErrorBoundary }    from '@/components/ErrorBoundary';
 import { Toast }            from '@/components/Toast';
 import { Header }           from '@/components/Header';
 import { TradingViewChart } from '@/components/TradingViewChart';
 import { PositionsTable }   from '@/components/PositionsTable';
 import { MarketInfo }       from '@/components/MarketInfo';
 import { OrderEntry }       from '@/components/OrderEntry';
-import { OrderBook }        from '@/components/OrderBook';
 
 import type { Position, ToastState } from '@/types';
 
@@ -126,7 +126,6 @@ export default function TradingApp() {
   // ── Order state ──────────────────────────────────────────────────────────────
 
   const [sizePct, setSizePct]       = useState(50);
-  const [orderType, setOrderType]   = useState('market');
   const [positions, setPositions]   = useState<Position[]>([]);
   const [buyYesLoading, setBuyYesLoading] = useState(false);
   const [buyNoLoading, setBuyNoLoading]   = useState(false);
@@ -144,7 +143,6 @@ export default function TradingApp() {
   const walletBalanceUSDC = walletBalance != null ? parseFloat(walletBalance) : 0;
   const amountValue = useMemo(() => ((walletBalanceUSDC * sizePct) / 100).toFixed(2), [walletBalanceUSDC, sizePct]);
   const feeEstimate = useMemo(() => ((walletBalanceUSDC * sizePct) / 100 * 0.002).toFixed(2), [walletBalanceUSDC, sizePct]);
-  const totalCost   = useMemo(() => (parseFloat(amountValue) + parseFloat(feeEstimate)).toFixed(2), [amountValue, feeEstimate]);
   const upPayout    = useMemo(() => {
     const p = market ? parseFloat(market.yesPrice) : 0.62;
     return p > 0 ? (parseFloat(amountValue) / p).toFixed(2) : '—';
@@ -233,6 +231,7 @@ export default function TradingApp() {
   // ── Layout ────────────────────────────────────────────────────────────────────
 
   return (
+    <ErrorBoundary>
     <div className="h-screen overflow-hidden bg-[#0d0e11] text-[#e8e8e8]">
       <Toast toast={toast} />
 
@@ -270,7 +269,6 @@ export default function TradingApp() {
               market={market}
               marketLoading={marketLoading}
               marketError={marketError}
-              countdown={countdown}
               countdownDisplay={countdownDisplay}
               countdownColor={countdownColor}
               marketStrikePrice={strikePrice}
@@ -282,11 +280,8 @@ export default function TradingApp() {
             <OrderEntry
               sizePct={sizePct}
               setSizePct={setSizePct}
-              orderType={orderType}
-              setOrderType={setOrderType}
               amountValue={amountValue}
               feeEstimate={feeEstimate}
-              totalCost={totalCost}
               upPayout={upPayout}
               downPayout={downPayout}
               buyYes={buyYes}
@@ -301,12 +296,11 @@ export default function TradingApp() {
               setTakeProfit={setTakeProfit}
               pendingSide={pendingSide}
             />
-
-            <OrderBook market={market} />
           </aside>
 
         </div>
       </main>
     </div>
+    </ErrorBoundary>
   );
 }

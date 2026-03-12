@@ -99,12 +99,10 @@ export function useMarket(showToast: ShowToast) {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return {
-    conditionIdInput, setConditionIdInput,
     market, setMarket,
     marketLoading,
     marketError,
     marketEndDate,
-    loadMarket,
     autoLoadMarket,
   };
 }
