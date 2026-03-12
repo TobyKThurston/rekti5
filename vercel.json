@@ -1,8 +1,0 @@
-{
-  "rewrites": [
-    { "source": "/gamma-api/:path*", "destination": "https://gamma-api.polymarket.com/:path*" },
-    { "source": "/clob-api/:path*", "destination": "https://clob.polymarket.com/:path*" },
-    { "source": "/polygon-rpc", "destination": "https://polygon-bor-rpc.publicnode.com/" },
-    { "source": "/polymarket/:path*", "destination": "https://polymarket.com/:path*" }
-  ]
-}

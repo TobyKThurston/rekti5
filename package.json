@@ -2,30 +2,39 @@
   "name": "edge-trading-cockpit",
   "private": true,
   "version": "0.0.0",
-  "type": "module",
   "scripts": {
-    "dev": "concurrently \"nodemon --watch server server/index.js\" \"vite\"",
-    "build": "vite build",
-    "preview": "vite preview"
+    "dev": "concurrently \"nodemon --watch server --ext ts --exec 'tsx server/index.ts'\" \"next dev\"",
+    "build": "next build",
+    "start": "next start",
+    "type-check": "tsc --noEmit"
   },
   "dependencies": {
     "@polymarket/clob-client": "^5.3.0",
     "@vercel/analytics": "^1.6.1",
     "better-sqlite3": "^12.6.2",
+    "buffer": "^6.0.3",
+    "crypto-browserify": "^3.12.1",
     "ethers": "^5.8.0",
+    "next": "^14.2.29",
     "node-cron": "^3.0.3",
+    "process": "^0.11.10",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "stream-browserify": "^3.0.0",
     "ws": "^8.18.0"
   },
   "devDependencies": {
-    "@vitejs/plugin-react": "^4.3.3",
+    "@types/better-sqlite3": "^7.6.12",
+    "@types/node": "^20.17.30",
+    "@types/react": "^18.3.20",
+    "@types/react-dom": "^18.3.5",
+    "@types/ws": "^8.5.14",
     "autoprefixer": "^10.4.20",
     "concurrently": "^9.0.0",
     "nodemon": "^3.1.0",
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.16",
-    "vite": "^5.4.11",
-    "vite-plugin-node-polyfills": "^0.25.0"
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.2"
   }
 }
