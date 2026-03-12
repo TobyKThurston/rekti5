@@ -1,5 +1,6 @@
 node_modules
 dist
+.next
 .vite
 .DS_Store
 .env
