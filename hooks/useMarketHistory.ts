@@ -27,7 +27,7 @@ async function fetchResult(windowMs: number): Promise<'YES' | 'NO' | null> {
       : JSON.parse(m.outcomePrices ?? '[]');
     if (parseFloat(prices[0]) >= 0.99) return 'YES';
     if (parseFloat(prices[1]) >= 0.99) return 'NO';
-  } catch {}
+  } catch (e) { console.error('[useMarketHistory] fetchResult:', e); }
   return null;
 }
 

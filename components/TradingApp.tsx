@@ -136,7 +136,7 @@ export default function TradingApp() {
   const positionsRef = useRef<Position[]>([]);
   useEffect(() => { positionsRef.current = positions; }, [positions]);
 
-  useTriggerEngine({ market, positionsRef, setPositions, clobClient, countdown });
+  useTriggerEngine({ market, positionsRef, setPositions, clobClient, countdown, showToast });
 
   // ── Derived values ────────────────────────────────────────────────────────────
 

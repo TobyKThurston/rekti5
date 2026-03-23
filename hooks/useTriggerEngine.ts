@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { Side, OrderType } from '@polymarket/clob-client';
-import type { Market, Position } from '@/types';
+import type { Market, Position, ToastType } from '@/types';
 
 interface UseTriggerEngineProps {
   market: Market | null;
@@ -9,6 +9,7 @@ interface UseTriggerEngineProps {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   clobClient: any;
   countdown: number;
+  showToast: (type: ToastType, msg: string) => void;
 }
 
 export function useTriggerEngine({
@@ -17,6 +18,7 @@ export function useTriggerEngine({
   setPositions,
   clobClient,
   countdown,
+  showToast,
 }: UseTriggerEngineProps) {
   const executingRef = useRef(new Set<string>());
 
@@ -76,6 +78,7 @@ export function useTriggerEngine({
         console.log(`[trigger] ${type} fired for ${order.id} at ${aggressivePrice}`);
       } catch (e) {
         console.error('[trigger] exit failed:', e);
+        showToast('error', 'SL/TP exit failed — position still open');
         setPositions(prev => prev.map(p =>
           p.id === order.id ? { ...p, status: 'OPEN_POSITION' as const } : p
         ));

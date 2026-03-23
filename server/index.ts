@@ -3,8 +3,9 @@ import { WebSocketServer, WebSocket } from 'ws';
 import Database from 'better-sqlite3';
 import cron from 'node-cron';
 import { ethers } from 'ethers';
+import { logger } from './logger';
 
-const FRONTEND_PORT      = 3001;
+const FRONTEND_PORT      = parseInt(process.env.PORT ?? '3001', 10);
 const CLOB_WS_URL        = 'wss://ws-subscriptions-clob.polymarket.com/ws/market';
 const MAX_BACKOFF_MS     = 30_000;
 
@@ -39,6 +40,8 @@ let reconnectDelay = 1_000;
 // ── SQLite DB ────────────────────────────────────────────────────────────────
 
 const db = new Database('resolution_prices.db');
+db.pragma('journal_mode = WAL');
+db.pragma('synchronous = NORMAL');
 db.prepare(`CREATE TABLE IF NOT EXISTS resolution_prices (
   window_start INTEGER PRIMARY KEY,
   price REAL NOT NULL
@@ -59,7 +62,7 @@ async function fetchAndStore(): Promise<void> {
   const [, answer] = await clContract.latestRoundData();
   const price = answer.toNumber() / 1e8;
   db.prepare('INSERT OR IGNORE INTO resolution_prices (window_start, price) VALUES (?, ?)').run(windowStart, price);
-  console.log(`[chainlink] stored ${price} for window ${new Date(windowStart).toISOString()}`);
+  logger.info({ price, window: windowStart }, '[chainlink] stored');
 }
 
 // ── HTTP handler ──────────────────────────────────────────────────────────────
@@ -67,8 +70,11 @@ async function fetchAndStore(): Promise<void> {
 function handleHttp(req: http.IncomingMessage, res: http.ServerResponse): void {
   if (req.method === 'GET' && req.url === '/price-to-beat') {
     const row = db.prepare('SELECT * FROM resolution_prices ORDER BY window_start DESC LIMIT 1').get();
-    res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+    res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': process.env.CORS_ORIGIN ?? 'http://localhost:3000' });
     res.end(JSON.stringify(row ?? null));
+  } else if (req.method === 'GET' && req.url === '/health') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ ok: true, uptime: process.uptime(), dbRows: db.prepare('SELECT COUNT(*) as n FROM resolution_prices').get() }));
   } else {
     res.writeHead(404); res.end();
   }
@@ -79,22 +85,22 @@ function handleHttp(req: http.IncomingMessage, res: http.ServerResponse): void {
 const httpServer = http.createServer(handleHttp);
 const wss = new WebSocketServer({ server: httpServer });
 httpServer.listen(FRONTEND_PORT, () =>
-  console.log(`[server] HTTP+WS on port ${FRONTEND_PORT}`));
+  logger.info({ port: FRONTEND_PORT }, '[server] HTTP+WS listening'));
 
 cron.schedule('*/5 * * * *', () =>
-  fetchAndStore().catch((e: Error) => console.error('[cron]', e.message)));
-fetchAndStore().catch((e: Error) => console.error('[startup]', e.message));
+  fetchAndStore().catch((e: Error) => logger.error({ err: e.message }, '[cron] fetchAndStore failed')));
+fetchAndStore().catch((e: Error) => logger.error({ err: e.message }, '[startup] fetchAndStore failed'));
 
 wss.on('error', (err: NodeJS.ErrnoException) => {
-  console.error('[server] WSS error:', err.message);
+  logger.error({ err: err.message }, '[server] WSS error');
   if (err.code === 'EADDRINUSE') {
-    console.error('[server] Port 3001 in use — exiting so process manager can restart');
+    logger.error({ port: FRONTEND_PORT }, '[server] port in use — exiting so process manager can restart');
     process.exit(1);
   }
 });
 
 wss.on('connection', (client: WebSocket) => {
-  console.log('[server] Frontend connected');
+  logger.info('[server] Frontend connected');
   if (marketState.timestamp > 0)
     client.send(JSON.stringify({ type: 'state', data: marketState }));
 
@@ -102,12 +108,12 @@ wss.on('connection', (client: WebSocket) => {
     try {
       const msg = JSON.parse(raw.toString()) as { type: string; yesTokenId: string; noTokenId: string };
       if (msg.type === 'subscribe') {
-        console.log(`[server] subscribe yes=${msg.yesTokenId.slice(0, 8)}… no=${msg.noTokenId.slice(0, 8)}…`);
+        logger.info({ yes: msg.yesTokenId.slice(0, 8), no: msg.noTokenId.slice(0, 8) }, '[server] subscribe');
         subscribeToMarket(msg.yesTokenId, msg.noTokenId);
       }
-    } catch (e) { console.error('[server] bad message:', (e as Error).message); }
+    } catch (e) { logger.error({ err: (e as Error).message }, '[server] bad message'); }
   });
-  client.on('close', () => console.log('[server] Frontend disconnected'));
+  client.on('close', () => logger.info('[server] Frontend disconnected'));
 });
 
 // ── Market subscription ──────────────────────────────────────────────────────
@@ -132,7 +138,7 @@ function subscribeToMarket(yesId: string, noId: string): void {
 
 function connectPolymarket(): void {
   if (!yesTokenId || !noTokenId) return;
-  console.log('[polymarket] Connecting…');
+  logger.info('[polymarket] Connecting…');
   polyWs = new WebSocket(CLOB_WS_URL);
 
   polyWs.on('open', () => {
@@ -142,7 +148,7 @@ function connectPolymarket(): void {
       type: 'market',
       custom_feature_enabled: true,
     }));
-    console.log('[polymarket] Subscribed to market channel');
+    logger.info('[polymarket] Subscribed to market channel');
   });
 
   polyWs.on('message', (raw: Buffer) => {
@@ -150,16 +156,16 @@ function connectPolymarket(): void {
       const parsed = JSON.parse(raw.toString());
       const msgs: unknown[] = Array.isArray(parsed) ? parsed : [parsed];
       for (const msg of msgs) processMessage(msg);
-    } catch (e) { console.error('[polymarket] parse error:', (e as Error).message); }
+    } catch (e) { logger.error({ err: (e as Error).message }, '[polymarket] parse error'); }
   });
 
   polyWs.on('close', (code: number) => {
-    console.log(`[polymarket] Disconnected (code ${code}), scheduling reconnect…`);
+    logger.info({ code }, '[polymarket] Disconnected, scheduling reconnect…');
     scheduleReconnect();
   });
 
   polyWs.on('error', (err: Error) => {
-    console.error('[polymarket] error:', err.message);
+    logger.error({ err: err.message }, '[polymarket] error');
   });
 
   let pongReceived = true;
@@ -167,7 +173,7 @@ function connectPolymarket(): void {
 
   const heartbeat = setInterval(() => {
     if (!pongReceived) {
-      console.warn('[polymarket] No pong received — assuming dead connection, reconnecting…');
+      logger.warn('[polymarket] No pong received — assuming dead connection, reconnecting…');
       clearInterval(heartbeat);
       polyWs?.terminate();
       return;
@@ -257,7 +263,7 @@ function processMessage(msg: any): void {
   if (updated) {
     marketState.timestamp = now;
     const yesMid = (marketState.bestYesBid + marketState.bestYesAsk) / 2;
-    console.log(`[${new Date(now).toISOString()}] YES mid=${yesMid.toFixed(4)} NO mid=${(1 - yesMid).toFixed(4)}`);
+    logger.info({ yesMid: yesMid.toFixed(4), noMid: (1 - yesMid).toFixed(4) }, '[market] price update');
     broadcast({ type: 'update', data: marketState });
   }
 }
@@ -278,9 +284,11 @@ function scheduleReconnect(): void {
 }
 
 process.on('uncaughtException', (err: Error) => {
-  console.error('[server] Uncaught exception:', err);
+  logger.error({ err }, '[server] Uncaught exception');
+  process.exit(1);
 });
 
 process.on('unhandledRejection', (reason: unknown) => {
-  console.error('[server] Unhandled rejection:', reason);
+  logger.error({ reason }, '[server] Unhandled rejection');
+  process.exit(1);
 });

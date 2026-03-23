@@ -114,7 +114,7 @@ export function useStrikePrice(): number | null {
           lastWindowRef.current = windowStartMs;
         }
       })
-      .catch(() => {});
+      .catch((e: unknown) => console.warn('[useStrikePrice] local api:', e));
   }, []);
 
   useEffect(() => {

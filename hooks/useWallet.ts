@@ -25,7 +25,7 @@ export function useWallet(showToast: ShowToast) {
 
   const clearWalletState = () => {
     localStorage.removeItem('walletConnected');
-    localStorage.removeItem('clobApiCreds');
+    sessionStorage.removeItem('clobApiCreds');
     setWalletAddress(null);
     setWalletBalance(null);
     setClobClient(null);
@@ -96,7 +96,7 @@ export function useWallet(showToast: ShowToast) {
       setClobClient(client);
       await checkGeo();
       localStorage.setItem('walletConnected', '1');
-      localStorage.setItem('clobApiCreds', JSON.stringify({
+      sessionStorage.setItem('clobApiCreds', JSON.stringify({
         key: apiCreds.key,
         secret: apiCreds.secret,
         passphrase: apiCreds.passphrase,
@@ -116,7 +116,7 @@ export function useWallet(showToast: ShowToast) {
 
   useEffect(() => {
     const stored = localStorage.getItem('walletConnected');
-    const storedCreds = localStorage.getItem('clobApiCreds');
+    const storedCreds = sessionStorage.getItem('clobApiCreds');
     if (!stored || !storedCreds || !window.ethereum) return;
 
     const silentReconnect = async () => {

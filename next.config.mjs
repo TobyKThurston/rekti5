@@ -1,4 +1,5 @@
 import { createRequire } from 'module';
+import { withSentryConfig } from '@sentry/nextjs';
 const require = createRequire(import.meta.url);
 
 /** @type {import('next').NextConfig} */
@@ -34,4 +35,4 @@ const nextConfig = {
   },
 };
 
-export default nextConfig;
+export default withSentryConfig(nextConfig, { silent: true, org: '', project: '' });
