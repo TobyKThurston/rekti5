@@ -1,7 +1,5 @@
 'use client';
 
-import { FlashNumber } from './FlashNumber';
-
 interface HeaderProps {
   walletAddress: string | null;
   walletBalance: string | null;
@@ -26,12 +24,11 @@ export function Header({
         <div className="hidden sm:block h-4 w-px bg-[#22242a]" />
         <div className="hidden sm:flex items-center gap-2 text-[11px]">
           <span className="text-[9px] tracking-[0.08em] text-[#f09000] font-semibold">ORACLE</span>
-          <FlashNumber
-            className="text-[13px] font-bold text-[#f5f5f5]"
-            value={btcPrice
+          <span className="text-[13px] font-bold text-[#f5f5f5]">
+            {btcPrice
               ? `$${btcPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
               : '—'}
-          />
+          </span>
 
           <span
             className="inline-block h-1.5 w-1.5 rounded-full bg-[#f09000]"

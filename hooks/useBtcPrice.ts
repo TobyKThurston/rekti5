@@ -2,11 +2,12 @@ import { useEffect, useRef, useState } from 'react';
 
 const KRAKEN_WS      = 'wss://ws.kraken.com/v2';
 const WATCHDOG_MS    = 5_000; // reconnect if no message in 5 s (heartbeat arrives every 1 s)
+const POLL_MS        = 100;   // 10 updates/sec — real-time feel without overwhelming
 
 export function useBtcPrice(): number | null {
   const [btcPrice, setBtcPrice] = useState<number | null>(null);
   const pendingRef  = useRef<number | null>(null);
-  const rafRef      = useRef<number | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     let ws: WebSocket;
@@ -34,6 +35,10 @@ export function useBtcPrice(): number | null {
           method: 'subscribe',
           params: { channel: 'trade', symbol: ['BTC/USD'] },
         }));
+        intervalRef.current = setInterval(() => {
+          const p = pendingRef.current;
+          if (p !== null) { pendingRef.current = null; setBtcPrice(p); }
+        }, POLL_MS);
       };
 
       ws.onmessage = (event) => {
@@ -42,21 +47,12 @@ export function useBtcPrice(): number | null {
         if (msg.channel === 'trade' && msg.data?.length) {
           const last = msg.data[msg.data.length - 1] as { price: number };
           pendingRef.current = last.price;
-          if (!rafRef.current) {
-            rafRef.current = requestAnimationFrame(() => {
-              rafRef.current = null;
-              const p = pendingRef.current;
-              if (p !== null) {
-                pendingRef.current = null;
-                setBtcPrice(p);
-              }
-            });
-          }
         }
       };
 
       ws.onclose = () => {
         clearTimeout(watchdogTimer);
+        clearInterval(intervalRef.current!); intervalRef.current = null;
         if (destroyed) return;
         console.warn(`[kraken] WS closed, reconnecting in ${delay}ms…`);
         reconnectTimer = setTimeout(() => {
@@ -76,7 +72,7 @@ export function useBtcPrice(): number | null {
       destroyed = true;
       clearTimeout(reconnectTimer);
       clearTimeout(watchdogTimer);
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      clearInterval(intervalRef.current!); intervalRef.current = null;
       ws?.close();
     };
   }, []);

@@ -1,7 +1,6 @@
 'use client';
 
 import type { Market, MarketHistoryEntry } from '@/types';
-import { FlashNumber } from './FlashNumber';
 
 interface MarketInfoProps {
   market: Market | null;
@@ -61,13 +60,10 @@ export function MarketInfo({
                 <div className="text-[9px] tracking-[0.08em] text-[#f09000] font-semibold mb-0.5">
                   RESOLUTION PRICE
                 </div>
-                <div className="text-[22px] font-bold leading-none">
-                  <FlashNumber
-                    className="text-[#f5f5f5]"
-                    value={btcPrice != null
-                      ? `$${btcPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                      : '—'}
-                  />
+                <div className="text-[22px] font-bold text-[#f5f5f5] leading-none">
+                  {btcPrice != null
+                    ? `$${btcPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                    : '—'}
                 </div>
                 {marketStrikePrice != null && btcPrice != null && (
                   <div
@@ -117,22 +113,22 @@ export function MarketInfo({
           <div className="mt-2 grid grid-cols-2 gap-1.5">
             <div className="rounded-[2px] bg-[#1a1c20] px-2 py-1.5 text-center">
               <div className="text-[10px] text-[#666c77]">YES</div>
-              <FlashNumber className="text-[13px] font-bold text-[#27c47c]" value={parseFloat(market.yesPrice).toFixed(3)} />
+              <div className="text-[13px] font-bold text-[#27c47c]">{parseFloat(market.yesPrice).toFixed(3)}</div>
             </div>
             <div className="rounded-[2px] bg-[#1a1c20] px-2 py-1.5 text-center">
               <div className="text-[10px] text-[#666c77]">NO</div>
-              <FlashNumber className="text-[13px] font-bold text-[#e04f4f]" value={parseFloat(market.noPrice).toFixed(3)} />
+              <div className="text-[13px] font-bold text-[#e04f4f]">{parseFloat(market.noPrice).toFixed(3)}</div>
             </div>
           </div>
 
           <div className="mt-1.5 grid grid-cols-3 gap-1">
             <div className="rounded-[2px] bg-[#1a1c20] px-1.5 py-1">
               <div className="text-[9px] text-[#666c77]">BID</div>
-              <FlashNumber className="text-[11px] text-[#27c47c]" value={parseFloat(String(market.bestBid)).toFixed(3)} />
+              <div className="text-[11px] text-[#27c47c]">{parseFloat(String(market.bestBid)).toFixed(3)}</div>
             </div>
             <div className="rounded-[2px] bg-[#1a1c20] px-1.5 py-1">
               <div className="text-[9px] text-[#666c77]">ASK</div>
-              <FlashNumber className="text-[11px] text-[#e04f4f]" value={parseFloat(String(market.bestAsk)).toFixed(3)} />
+              <div className="text-[11px] text-[#e04f4f]">{parseFloat(String(market.bestAsk)).toFixed(3)}</div>
             </div>
             <div className="rounded-[2px] bg-[#1a1c20] px-1.5 py-1">
               <div className="text-[9px] text-[#666c77]">SPRD</div>
