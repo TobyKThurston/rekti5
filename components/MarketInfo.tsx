@@ -58,7 +58,7 @@ export function MarketInfo({
             <div className="rounded-[2px] bg-[#1a1c20] border border-[#22242a] px-3 py-2 flex items-center justify-between">
               <div>
                 <div className="text-[9px] tracking-[0.08em] text-[#f09000] font-semibold mb-0.5">
-                  RESOLUTION PRICE · Kraken BTC/USD
+                  RESOLUTION PRICE
                 </div>
                 <div className="text-[22px] font-bold text-[#f5f5f5] leading-none">
                   {btcPrice != null
