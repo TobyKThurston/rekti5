@@ -1,9 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 const KRAKEN_WS = 'wss://ws.kraken.com/v2';
 
 export function useBtcPrice(): number | null {
   const [btcPrice, setBtcPrice] = useState<number | null>(null);
+  const pendingRef = useRef<number | null>(null);
+  const rafRef     = useRef<number | null>(null);
 
   useEffect(() => {
     let ws: WebSocket;
@@ -18,15 +20,25 @@ export function useBtcPrice(): number | null {
         delay = 1000;
         ws.send(JSON.stringify({
           method: 'subscribe',
-          params: { channel: 'ticker', symbol: ['BTC/USD'] },
+          params: { channel: 'trade', symbol: ['BTC/USD'] },
         }));
       };
 
       ws.onmessage = (event) => {
         const msg = JSON.parse(event.data as string);
-        if (msg.channel === 'ticker' && msg.data?.length) {
-          const { bid, ask } = msg.data[0] as { bid: number; ask: number };
-          setBtcPrice((bid + ask) / 2);
+        if (msg.channel === 'trade' && msg.data?.length) {
+          const last = msg.data[msg.data.length - 1] as { price: number };
+          pendingRef.current = last.price;
+          if (!rafRef.current) {
+            rafRef.current = requestAnimationFrame(() => {
+              rafRef.current = null;
+              const p = pendingRef.current;
+              if (p !== null) {
+                pendingRef.current = null;
+                setBtcPrice(p);
+              }
+            });
+          }
         }
       };
 
@@ -49,6 +61,7 @@ export function useBtcPrice(): number | null {
     return () => {
       destroyed = true;
       clearTimeout(reconnectTimer);
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
       ws?.close();
     };
   }, []);
