@@ -24,6 +24,8 @@ export function useWebSocket({ market, setMarket }: UseWebSocketProps) {
   const wsReconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingSubscription = useRef<{ yesTokenId: string; noTokenId: string } | null>(null);
   const heartbeatRef     = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pendingUpdateRef = useRef<MarketState | null>(null);
+  const rafRef           = useRef<number | null>(null);
   const marketStateRef   = useRef<MarketState>({
     bestYesBid: 0, bestYesAsk: 0,
     bestNoBid:  0, bestNoAsk:  0,
@@ -155,26 +157,34 @@ export function useWebSocket({ market, setMarket }: UseWebSocketProps) {
 
       if (updated) {
         state.timestamp = Date.now();
-        const yesMid = (state.bestYesBid + state.bestYesAsk) / 2;
-        const noMid  = 1 - yesMid;
-        setMarket((prev) => prev ? {
-          ...prev,
-          yesPrice:  yesMid.toFixed(4),
-          noPrice:   noMid.toFixed(4),
-          bestBid:   state.bestYesBid,
-          bestAsk:   state.bestYesAsk,
-          bestNoBid: state.bestNoBid,
-          bestNoAsk: state.bestNoAsk,
-          spread:    state.spreadYes != null ? String(state.spreadYes) : prev.spread,
-          lastUpdated: state.timestamp,
-        } : prev);
+        pendingUpdateRef.current = { ...state };
+        if (!rafRef.current) {
+          rafRef.current = requestAnimationFrame(() => {
+            rafRef.current = null;
+            const s = pendingUpdateRef.current;
+            if (!s) return;
+            pendingUpdateRef.current = null;
+            setMarket((prev) => prev ? {
+              ...prev,
+              yesPrice:    s.bestYesBid.toFixed(4),
+              noPrice:     s.bestNoBid.toFixed(4),
+              bestBid:     s.bestYesBid,
+              bestAsk:     s.bestYesAsk,
+              bestNoBid:   s.bestNoBid,
+              bestNoAsk:   s.bestNoAsk,
+              spread:      s.spreadYes != null ? String(s.spreadYes) : prev.spread,
+              lastUpdated: s.timestamp,
+            } : prev);
+          });
+        }
       }
     };
 
     connect();
     return () => {
       if (wsReconnectTimer.current) clearTimeout(wsReconnectTimer.current);
-      if (heartbeatRef.current) clearInterval(heartbeatRef.current);
+      if (heartbeatRef.current)     clearInterval(heartbeatRef.current);
+      if (rafRef.current)           cancelAnimationFrame(rafRef.current);
       wsRef.current?.close();
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
