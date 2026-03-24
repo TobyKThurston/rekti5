@@ -26,6 +26,18 @@ body {
   line-height: 1.15;
 }
 
+/* Number flash animations */
+@keyframes flash-up {
+  0%   { text-shadow: 0 0 10px rgba(39, 196, 124, 0.9), 0 0 22px rgba(39, 196, 124, 0.4); }
+  100% { text-shadow: none; }
+}
+@keyframes flash-down {
+  0%   { text-shadow: 0 0 10px rgba(224, 79, 79, 0.9), 0 0 22px rgba(224, 79, 79, 0.4); }
+  100% { text-shadow: none; }
+}
+.flash-up   { animation: flash-up   320ms ease-out; }
+.flash-down { animation: flash-down 320ms ease-out; }
+
 /* Thin terminal-style scrollbars */
 * {
   scrollbar-width: thin;
