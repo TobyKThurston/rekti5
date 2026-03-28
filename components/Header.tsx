@@ -1,10 +1,11 @@
 'use client';
 
+import { useBtcPrice } from '@/hooks/useBtcPrice';
+
 interface HeaderProps {
   walletAddress: string | null;
   walletBalance: string | null;
   wrongNetwork: boolean;
-  btcPrice: number | null;
   connectWallet: () => void;
   disconnectWallet: () => void;
 }
@@ -13,10 +14,10 @@ export function Header({
   walletAddress,
   walletBalance,
   wrongNetwork,
-  btcPrice,
   connectWallet,
   disconnectWallet,
 }: HeaderProps) {
+  const btcPrice = useBtcPrice();
   return (
     <header className="fixed inset-x-0 top-0 z-20 h-11 border-b border-[#22242a] bg-[#131518] px-3">
       <div className="flex h-full items-center gap-4">

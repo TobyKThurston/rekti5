@@ -49,3 +49,24 @@ body {
 *::-webkit-scrollbar-thumb:hover {
   background: #3a3d45;
 }
+
+/* Paper-clock / slot-machine digit scroll */
+@keyframes slot-up {
+  from { transform: translateY(0); }
+  to   { transform: translateY(-50%); }
+}
+
+@keyframes slot-down {
+  from { transform: translateY(-50%); }
+  to   { transform: translateY(0); }
+}
+
+.anim-slot-up {
+  display: block;
+  animation: slot-up 220ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.anim-slot-down {
+  display: block;
+  animation: slot-down 220ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}

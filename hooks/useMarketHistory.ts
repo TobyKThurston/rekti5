@@ -31,7 +31,7 @@ async function fetchResult(windowMs: number): Promise<'YES' | 'NO' | null> {
   return null;
 }
 
-export function useMarketHistory(): MarketHistoryEntry[] {
+export function useMarketHistory(marketKey?: string): MarketHistoryEntry[] {
   const [history, setHistory] = useState<MarketHistoryEntry[]>([]);
 
   useEffect(() => {
@@ -43,7 +43,7 @@ export function useMarketHistory(): MarketHistoryEntry[] {
       const storedSlugs = new Set(stored.map((r) => r.slug));
       const toAdd: MarketHistoryEntry[] = [];
 
-      for (let n = 1; n <= 8; n++) {
+      for (let n = 1; n <= 12; n++) {
         const windowMs = now - n * 300_000;
         const slug = btc5mSlug(windowMs);
         if (storedSlugs.has(slug)) continue;
@@ -56,7 +56,7 @@ export function useMarketHistory(): MarketHistoryEntry[] {
       const merged = [...toAdd, ...stored]
         .filter((r, i, arr) => arr.findIndex((x) => x.slug === r.slug) === i)
         .sort((a, b) => b.windowMs - a.windowMs)
-        .slice(0, 5);
+        .slice(0, 12);
       save(merged);
       setHistory(merged);
     }
@@ -64,7 +64,8 @@ export function useMarketHistory(): MarketHistoryEntry[] {
     refresh();
     const id = setInterval(refresh, 60_000);
     return () => clearInterval(id);
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [marketKey]);
 
   return history;
 }

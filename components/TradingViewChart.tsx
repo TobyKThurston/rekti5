@@ -1,7 +1,44 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import { TV_SCRIPT_SRC } from '@/config/networks';
+import { useEffect, useRef } from 'react';
+import {
+  createChart,
+  CrosshairMode,
+  CandlestickSeries,
+  type IChartApi,
+  type ISeriesApi,
+  type IPriceLine,
+  type CandlestickData,
+  type Time,
+} from 'lightweight-charts';
+import { priceEngine } from '@/lib/priceEngine';
+
+const STORAGE_KEY = 'btc-1m-bars';
+const MAX_BARS = 500;
+
+function loadBars(): CandlestickData<Time>[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return [];
+    const bars = JSON.parse(raw) as CandlestickData<Time>[];
+    // Discard bars from previous UTC days to prevent stale data on reload
+    const todayStartSec = Math.floor(
+      new Date(new Date().toISOString().slice(0, 10) + 'T00:00:00Z').getTime() / 1000
+    );
+    return bars.filter(b => (b.time as number) >= todayStartSec);
+  } catch {
+    return [];
+  }
+}
+
+function saveBars(bars: Map<Time, CandlestickData<Time>>): void {
+  try {
+    const arr = [...bars.values()].slice(-MAX_BARS);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(arr));
+  } catch {
+    // storage full or unavailable
+  }
+}
 
 interface TradingViewChartProps {
   targetPrice?: number;
@@ -9,128 +46,119 @@ interface TradingViewChartProps {
 
 export function TradingViewChart({ targetPrice = 64500 }: TradingViewChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const widgetRef = useRef<TradingViewWidget | null>(null);
-  const priceLineRef = useRef<unknown>(null);
-  const drawPriceLineRef = useRef<((price: number) => void) | null>(null);
-  const targetPriceRef = useRef(targetPrice);
-  const [loadError, setLoadError] = useState(false);
+  const chartRef = useRef<IChartApi | null>(null);
+  const seriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
+  const priceLineRef = useRef<IPriceLine | null>(null);
+  const currentBarRef = useRef<CandlestickData<Time> | null>(null);
+  const barsRef = useRef<Map<Time, CandlestickData<Time>>>(new Map());
 
+  // Init chart once
   useEffect(() => {
-    targetPriceRef.current = targetPrice;
-  }, [targetPrice]);
+    const container = containerRef.current;
+    if (!container) return;
 
-  useEffect(() => {
-    let cancelled = false;
+    const chart = createChart(container, {
+      layout: { background: { color: '#0d0e11' }, textColor: '#9a9b9f' },
+      grid: { vertLines: { color: '#22242a' }, horzLines: { color: '#22242a' } },
+      crosshair: { mode: CrosshairMode.Normal },
+      timeScale: { timeVisible: true, secondsVisible: true },
+      autoSize: true,
+    });
 
-    function initWidget() {
-      if (cancelled || !containerRef.current || !window.TradingView?.widget) return;
+    const series = chart.addSeries(CandlestickSeries, {
+      upColor: '#27c47c',
+      downColor: '#e04f4f',
+      borderUpColor: '#27c47c',
+      borderDownColor: '#e04f4f',
+      wickUpColor: '#27c47c',
+      wickDownColor: '#e04f4f',
+      priceFormat: { type: 'price', precision: 2, minMove: 0.01 },
+    });
 
-      const containerId = `tv-chart-${Math.random().toString(36).slice(2)}`;
-      containerRef.current.id = containerId;
+    chartRef.current = chart;
+    seriesRef.current = series;
 
-      const widget = new window.TradingView.widget({
-        symbol: 'BITSTAMP:BTCUSD',
-        interval: '1',
-        timezone: 'Etc/UTC',
-        theme: 'dark',
-        style: '1',
-        locale: 'en',
-        hide_top_toolbar: false,
-        hide_legend: false,
-        withdateranges: true,
-        allow_symbol_change: true,
-        autosize: true,
-        container_id: containerId,
-      });
+    // Restore persisted bars
+    const saved = loadBars();
+    if (saved.length > 0) {
+      const map = new Map<Time, CandlestickData<Time>>();
+      for (const bar of saved) map.set(bar.time, bar);
+      barsRef.current = map;
+      series.setData(saved);
+      // Restore the last bar as the current live bar
+      currentBarRef.current = saved[saved.length - 1];
+    }
 
-      widgetRef.current = widget;
+    priceEngine.start();
 
-      widget.onChartReady(() => {
-        if (cancelled) return;
+    const unsub = priceEngine.subscribe((price) => {
+      const barTime = (Math.floor(Date.now() / 1000 / 60) * 60) as Time;
+      const cur = currentBarRef.current;
 
-        const chart = widget.chart();
+      const isNewBar = !cur || cur.time !== barTime;
+      let nextBar: CandlestickData<Time>;
 
-        const drawPriceLine = (nextTargetPrice: number) => {
-          if (!chart || typeof nextTargetPrice !== 'number' || Number.isNaN(nextTargetPrice)) return;
-
-          if (priceLineRef.current) {
-            try {
-              chart.removeEntity(priceLineRef.current);
-            } catch {
-              // Ignore stale entity IDs
-            }
-            priceLineRef.current = null;
-          }
-
-          const created = chart.createShape(
-            { price: nextTargetPrice },
-            {
-              shape: 'horizontal_line',
-              lock: true,
-              disableSelection: true,
-              disableSave: true,
-              text: 'Price to Beat',
-              overrides: {
-                linecolor: '#1F5E3A',
-                linestyle: 0,
-                linewidth: 2,
-              },
-            }
-          );
-
-          Promise.resolve(created).then((entityId) => {
-            priceLineRef.current = entityId;
-          });
+      if (isNewBar) {
+        nextBar = { time: barTime, open: price, high: price, low: price, close: price };
+        // Persist when a new bar opens (saves the completed previous bar too)
+        if (cur) barsRef.current.set(cur.time, cur);
+        saveBars(barsRef.current);
+      } else {
+        nextBar = {
+          time: barTime,
+          open: cur.open,
+          high: Math.max(cur.high, price),
+          low: Math.min(cur.low, price),
+          close: price,
         };
+      }
 
-        drawPriceLineRef.current = drawPriceLine;
-        drawPriceLine(targetPriceRef.current);
-        window.updatePriceToBeat = drawPriceLine;
+      barsRef.current.set(barTime, nextBar);
+      currentBarRef.current = nextBar;
+      series.update(nextBar);
+    });
 
-        chart.onIntervalChanged().subscribe(null, () => drawPriceLine(targetPriceRef.current));
-        chart.onSymbolChanged().subscribe(null, () => drawPriceLine(targetPriceRef.current));
-      });
-    }
-
-    if (window.TradingView?.widget) {
-      initWidget();
-    } else {
-      const script = document.createElement('script');
-      script.src = TV_SCRIPT_SRC;
-      script.async = true;
-      script.onload = initWidget;
-      script.onerror = () => { if (!cancelled) setLoadError(true); };
-      document.head.appendChild(script);
-    }
+    // Save current partial bar on page unload
+    const handleUnload = () => {
+      if (currentBarRef.current) {
+        barsRef.current.set(currentBarRef.current.time, currentBarRef.current);
+        saveBars(barsRef.current);
+      }
+    };
+    window.addEventListener('beforeunload', handleUnload);
 
     return () => {
-      cancelled = true;
-      if (window.updatePriceToBeat === drawPriceLineRef.current) {
-        delete window.updatePriceToBeat;
-      }
-      if (widgetRef.current) {
-        widgetRef.current.remove();
-        widgetRef.current = null;
-      }
+      unsub();
+      window.removeEventListener('beforeunload', handleUnload);
+      chart.remove();
+      chartRef.current = null;
+      seriesRef.current = null;
       priceLineRef.current = null;
-      drawPriceLineRef.current = null;
+      currentBarRef.current = null;
     };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
+  // Update price-to-beat line when targetPrice changes
   useEffect(() => {
-    if (drawPriceLineRef.current) {
-      drawPriceLineRef.current(targetPrice);
+    const series = seriesRef.current;
+    if (!series) return;
+
+    if (priceLineRef.current) {
+      series.removePriceLine(priceLineRef.current);
+      priceLineRef.current = null;
+    }
+
+    if (typeof targetPrice === 'number' && !Number.isNaN(targetPrice)) {
+      priceLineRef.current = series.createPriceLine({
+        price: targetPrice,
+        color: '#1F5E3A',
+        lineWidth: 2,
+        lineStyle: 0,
+        title: 'Price to Beat',
+        axisLabelVisible: true,
+      });
     }
   }, [targetPrice]);
 
-  return (
-    <div className="h-full w-full relative">
-      <div ref={containerRef} className="h-full w-full" />
-      {loadError && (
-        <div className="absolute inset-0 flex items-center justify-center text-sm text-gray-400 bg-[#0d0e11]">
-          Chart unavailable — TradingView servers could not be reached.
-        </div>
-      )}
-    </div>
-  );
+  return <div ref={containerRef} className="h-full w-full" />;
 }

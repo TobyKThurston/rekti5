@@ -6,7 +6,6 @@ import { Side, OrderType } from '@polymarket/clob-client';
 import { useWallet }         from '@/hooks/useWallet';
 import { useMarket }         from '@/hooks/useMarket';
 import { useWebSocket }      from '@/hooks/useWebSocket';
-import { useBtcPrice }       from '@/hooks/useBtcPrice';
 import { useCountdown }      from '@/hooks/useCountdown';
 import { useTriggerEngine }  from '@/hooks/useTriggerEngine';
 import { useStrikePrice }    from '@/hooks/useStrikePrice';
@@ -16,9 +15,11 @@ import { ErrorBoundary }    from '@/components/ErrorBoundary';
 import { Toast }            from '@/components/Toast';
 import { Header }           from '@/components/Header';
 import { TradingViewChart } from '@/components/TradingViewChart';
-import { PositionsTable }   from '@/components/PositionsTable';
-import { MarketInfo }       from '@/components/MarketInfo';
-import { OrderEntry }       from '@/components/OrderEntry';
+import { PositionsTable }        from '@/components/PositionsTable';
+import { MarketInfo }            from '@/components/MarketInfo';
+import { OrderEntry }            from '@/components/OrderEntry';
+import { MarketMicrostructure }  from '@/components/MarketMicrostructure';
+import { SignalStack }           from '@/components/SignalStack';
 
 import type { Position, ToastState } from '@/types';
 
@@ -66,16 +67,18 @@ export default function TradingApp() {
     autoLoadMarket,
   } = useMarket(showToast);
 
-  const chainlinkPrice = useBtcPrice();
   const { countdown, countdownDisplay, countdownColor } = useCountdown(marketEndDate);
 
   const strikePrice = useStrikePrice();
-  const marketHistory = useMarketHistory();
+  const marketHistory = useMarketHistory(market?.yesTokenId);
 
   // ── Keyboard shortcuts ────────────────────────────────────────────────────────
 
+  const [chartMounted, setChartMounted] = useState(false);
   const [pendingSide, setPendingSide] = useState<'yes' | 'no' | null>(null);
   const kbStateRef = useRef<KbState | null>(null);
+
+  useEffect(() => setChartMounted(true), []);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -121,7 +124,7 @@ export default function TradingApp() {
     }
   }, [countdown, marketEndDate]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  useWebSocket({ market, setMarket });
+  const { recentTrades, whaleTrades } = useWebSocket({ market, setMarket });
 
   // ── Order state ──────────────────────────────────────────────────────────────
 
@@ -239,7 +242,6 @@ export default function TradingApp() {
         walletAddress={walletAddress}
         walletBalance={walletBalance}
         wrongNetwork={wrongNetwork}
-        btcPrice={chainlinkPrice}
         connectWallet={connectWallet}
         disconnectWallet={disconnectWallet}
       />
@@ -248,10 +250,32 @@ export default function TradingApp() {
         <div className="h-[calc(100vh-44px)] flex flex-col min-[1100px]:grid min-[1100px]:grid-cols-[minmax(0,70%)_minmax(400px,30%)]">
 
           <section className="h-[45%] shrink-0 flex flex-col min-[1100px]:h-full">
-            <div className="flex-1 min-h-0">
-              <TradingViewChart targetPrice={strikePrice ?? 64500} />
+
+            {/* Chart + signal stack + empty gap */}
+            <div className="flex-1 min-h-0 flex bg-[#0d0e11]">
+              {/* Chart column */}
+              <div className="flex flex-col flex-1 min-w-0 h-full">
+                <div className="flex-1 min-h-0">
+                  {chartMounted
+                    ? <TradingViewChart targetPrice={strikePrice ?? 64500} />
+                    : <div className="h-full w-full bg-[#0d0e11]" />}
+                </div>
+                <div className="shrink-0 h-[26%] flex border-t border-[#22242a] bg-[#131518]">
+                  <MarketMicrostructure
+                    market={market}
+                    recentTrades={recentTrades}
+                    amountValue={amountValue}
+                  />
+                </div>
+              </div>
+
+              {/* Signal Stack */}
+              <div className="w-[160px] shrink-0 h-full border-l border-[#22242a] bg-[#131518] overflow-y-auto">
+                <SignalStack strikePrice={strikePrice} recentResults={marketHistory} whaleTrades={whaleTrades} />
+              </div>
             </div>
 
+            {/* Positions */}
             <div className="hidden min-[1100px]:block h-[22%] shrink-0 overflow-y-auto border-t border-[#22242a] bg-[#131518]">
               <PositionsTable
                 positions={positions}
@@ -272,7 +296,6 @@ export default function TradingApp() {
               countdownDisplay={countdownDisplay}
               countdownColor={countdownColor}
               marketStrikePrice={strikePrice}
-              btcPrice={chainlinkPrice}
               autoLoadMarket={autoLoadMarket}
               recentResults={marketHistory}
             />

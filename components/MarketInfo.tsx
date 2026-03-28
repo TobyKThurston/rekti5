@@ -1,6 +1,8 @@
 'use client';
 
 import type { Market, MarketHistoryEntry } from '@/types';
+import { ScrollingNumber } from '@/components/ScrollingNumber';
+import { useBtcPrice } from '@/hooks/useBtcPrice';
 
 interface MarketInfoProps {
   market: Market | null;
@@ -9,7 +11,6 @@ interface MarketInfoProps {
   countdownDisplay: string;
   countdownColor: string;
   marketStrikePrice: number | null;
-  btcPrice: number | null;
   autoLoadMarket: () => void;
   recentResults: MarketHistoryEntry[];
 }
@@ -21,10 +22,10 @@ export function MarketInfo({
   countdownDisplay,
   countdownColor,
   marketStrikePrice,
-  btcPrice,
   autoLoadMarket,
   recentResults,
 }: MarketInfoProps) {
+  const btcPrice = useBtcPrice();
   const yesPct = market ? Math.round(parseFloat(market.yesPrice) * 100) : 62;
   const noPct  = 100 - yesPct;
   const lastUpdateTime = market?.lastUpdated
@@ -60,20 +61,12 @@ export function MarketInfo({
                 <div className="text-[9px] tracking-[0.08em] text-[#f09000] font-semibold mb-0.5">
                   RESOLUTION PRICE
                 </div>
-                <div className="text-[22px] font-bold text-[#f5f5f5] leading-none">
-                  {btcPrice != null
+                <ScrollingNumber
+                  value={btcPrice != null
                     ? `$${btcPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
                     : '—'}
-                </div>
-                {marketStrikePrice != null && btcPrice != null && (
-                  <div
-                    className="mt-0.5 text-[11px] font-semibold"
-                    style={{ color: btcPrice >= marketStrikePrice ? '#27c47c' : '#e04f4f' }}
-                  >
-                    {btcPrice >= marketStrikePrice ? '+' : ''}
-                    {(btcPrice - marketStrikePrice).toFixed(0)} vs target ${marketStrikePrice.toLocaleString()}
-                  </div>
-                )}
+                  className="text-[22px] font-bold text-[#f5f5f5] leading-none"
+                />
               </div>
               <span
                 className="inline-block h-2 w-2 rounded-full bg-[#f09000] shrink-0"
@@ -136,23 +129,6 @@ export function MarketInfo({
             </div>
           </div>
 
-          {recentResults?.length > 0 && (
-            <div className="mt-1.5 flex items-center gap-1">
-              <span className="text-[10px] text-[#666c77] mr-0.5">LAST 5</span>
-              {[...recentResults].reverse().map((r) => (
-                <span
-                  key={r.slug}
-                  className={`rounded-[2px] border px-1.5 py-0.5 text-[10px] font-bold ${
-                    r.result === 'YES'
-                      ? 'border-[#27c47c] bg-[#0a1a0f] text-[#27c47c]'
-                      : 'border-[#e04f4f] bg-[#1a0a0a] text-[#e04f4f]'
-                  }`}
-                >
-                  {r.result}
-                </span>
-              ))}
-            </div>
-          )}
 
           {lastUpdateTime && (
             <div className="mt-1.5 flex items-center justify-between text-[10px] text-[#666c77]">

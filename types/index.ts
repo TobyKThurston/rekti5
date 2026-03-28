@@ -33,6 +33,23 @@ export interface Position {
   positive?: boolean;
 }
 
+export interface RecentTrade {
+  id: string;
+  side: 'YES' | 'NO';
+  price: number;
+  size: number;
+  ts: number;
+}
+
+export interface WhaleTrade {
+  id: string;
+  side: 'YES' | 'NO';
+  size: number;
+  price: number;
+  address?: string;
+  ts: number;
+}
+
 export interface MarketHistoryEntry {
   slug: string;
   result: 'YES' | 'NO';

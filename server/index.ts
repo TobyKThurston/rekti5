@@ -1,13 +1,10 @@
 import http from 'node:http';
 import { WebSocketServer, WebSocket } from 'ws';
-import Database from 'better-sqlite3';
-import cron from 'node-cron';
-import { ethers } from 'ethers';
 import { logger } from './logger';
 
-const FRONTEND_PORT      = parseInt(process.env.PORT ?? '3001', 10);
-const CLOB_WS_URL        = 'wss://ws-subscriptions-clob.polymarket.com/ws/market';
-const MAX_BACKOFF_MS     = 30_000;
+const FRONTEND_PORT  = parseInt(process.env.PORT ?? '3001', 10);
+const CLOB_WS_URL    = 'wss://ws-subscriptions-clob.polymarket.com/ws/market';
+const MAX_BACKOFF_MS = 30_000;
 
 interface MarketState {
   bestYesBid: number;
@@ -37,44 +34,12 @@ let polyWs: WebSocket | null = null;
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 let reconnectDelay = 1_000;
 
-// ── SQLite DB ────────────────────────────────────────────────────────────────
-
-const db = new Database('resolution_prices.db');
-db.pragma('journal_mode = WAL');
-db.pragma('synchronous = NORMAL');
-db.prepare(`CREATE TABLE IF NOT EXISTS resolution_prices (
-  window_start INTEGER PRIMARY KEY,
-  price REAL NOT NULL
-)`).run();
-
-// ── Chainlink price fetcher ───────────────────────────────────────────────────
-
-const clProvider = new ethers.providers.JsonRpcProvider('https://polygon-bor-rpc.publicnode.com/');
-const clContract = new ethers.Contract(
-  '0xc907E116054Ad103354f2D350FD2514433D57F6f',
-  ['function latestRoundData() view returns (uint80,int256,uint256,uint256,uint80)'],
-  clProvider,
-);
-
-async function fetchAndStore(): Promise<void> {
-  const windowStart = Math.floor(Date.now() / 300_000) * 300_000;
-  if (db.prepare('SELECT 1 FROM resolution_prices WHERE window_start = ?').get(windowStart)) return;
-  const [, answer] = await clContract.latestRoundData();
-  const price = answer.toNumber() / 1e8;
-  db.prepare('INSERT OR IGNORE INTO resolution_prices (window_start, price) VALUES (?, ?)').run(windowStart, price);
-  logger.info({ price, window: windowStart }, '[chainlink] stored');
-}
-
 // ── HTTP handler ──────────────────────────────────────────────────────────────
 
 function handleHttp(req: http.IncomingMessage, res: http.ServerResponse): void {
-  if (req.method === 'GET' && req.url === '/price-to-beat') {
-    const row = db.prepare('SELECT * FROM resolution_prices ORDER BY window_start DESC LIMIT 1').get();
-    res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': process.env.CORS_ORIGIN ?? 'http://localhost:3000' });
-    res.end(JSON.stringify(row ?? null));
-  } else if (req.method === 'GET' && req.url === '/health') {
+  if (req.method === 'GET' && req.url === '/health') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ ok: true, uptime: process.uptime(), dbRows: db.prepare('SELECT COUNT(*) as n FROM resolution_prices').get() }));
+    res.end(JSON.stringify({ ok: true, uptime: process.uptime() }));
   } else {
     res.writeHead(404); res.end();
   }
@@ -86,10 +51,6 @@ const httpServer = http.createServer(handleHttp);
 const wss = new WebSocketServer({ server: httpServer });
 httpServer.listen(FRONTEND_PORT, () =>
   logger.info({ port: FRONTEND_PORT }, '[server] HTTP+WS listening'));
-
-cron.schedule('*/5 * * * *', () =>
-  fetchAndStore().catch((e: Error) => logger.error({ err: e.message }, '[cron] fetchAndStore failed')));
-fetchAndStore().catch((e: Error) => logger.error({ err: e.message }, '[startup] fetchAndStore failed'));
 
 wss.on('error', (err: NodeJS.ErrnoException) => {
   logger.error({ err: err.message }, '[server] WSS error');

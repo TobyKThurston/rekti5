@@ -1,154 +1,153 @@
 import { useEffect, useRef, useState } from 'react';
-import { ethers } from 'ethers';
-import { btc5mSlug } from '@/lib/btc5mSlug';
+import { chainlinkRtds, type ChainlinkTick } from '@/lib/chainlinkRtds';
 
-// Module-level cache — survives re-renders, reset on 404 (stale deploy)
-let cachedBuildId: string | null = null;
+// ── Locked-strike shape ────────────────────────────────────────────────────────
 
-// Chainlink BTC/USD on Polygon — same contract as useBtcPrice
-const CHAINLINK_BTC_USD = '0xc907E116054Ad103354f2D350FD2514433D57F6f';
-const ABI = [
-  'function latestRoundData() view returns (uint80,int256,uint256,uint256,uint80)',
-  'function getRoundData(uint80) view returns (uint80,int256,uint256,uint256,uint80)',
-];
-const provider = new ethers.providers.JsonRpcProvider('/polygon-rpc');
-const clContract = new ethers.Contract(CHAINLINK_BTC_USD, ABI, provider);
-
-// Returns the BTC/USD price (in dollars) that was active on-chain at windowStartMs.
-// Walks back round IDs until it finds the round whose updatedAt <= windowStartSec.
-async function getWindowOpenPrice(windowStartMs: number): Promise<number | null> {
-  const windowStartSec = windowStartMs / 1000;
-  const [roundId, answer, , updatedAt] = await clContract.latestRoundData();
-
-  if (updatedAt.toNumber() <= windowStartSec) {
-    return answer.toNumber() / 1e8;
-  }
-
-  const phaseId    = roundId.shr(64);
-  let   aggRoundId = roundId.and('0xFFFFFFFFFFFFFFFF');
-
-  for (let i = 0; i < 20; i++) {
-    aggRoundId = aggRoundId.sub(1);
-    if (aggRoundId.lte(0)) break;
-    const prevId = phaseId.shl(64).or(aggRoundId);
-    try {
-      const [, prevAnswer, , prevUpdatedAt] = await clContract.getRoundData(prevId);
-      if (prevUpdatedAt.toNumber() <= windowStartSec) {
-        return prevAnswer.toNumber() / 1e8;
-      }
-    } catch { break; }
-  }
-
-  return answer.toNumber() / 1e8;
+interface LockedStrike {
+  windowStartMs:   number;
+  strikeValue:     number;
+  strikeTimestamp: number;  // Chainlink tick timestamp (ms)
+  source:          'polymarket_chainlink_rtds';
 }
 
-function findPriceToBeat(data: Record<string, unknown>, slug: string): number | null {
-  const pageProps = (data.props as Record<string, unknown>)?.pageProps as Record<string, unknown>
-    ?? (data.pageProps as Record<string, unknown>)
-    ?? {};
-  const direct = (pageProps.eventMetadata as Record<string, unknown>)?.priceToBeat;
-  if (direct != null) return parseFloat(String(direct));
+// ── localStorage helpers ───────────────────────────────────────────────────────
 
-  const queries = ((pageProps.dehydratedState as Record<string, unknown>)?.queries as unknown[]) ?? [];
-  for (const q of queries) {
-    const qd = (q as Record<string, unknown>)?.state as Record<string, unknown>;
-    const qdata = qd?.data as Record<string, unknown> | undefined;
-    if (!qdata) continue;
+const CACHE_KEY = 'strike-price-v3';
 
-    if (qdata.slug === slug && (qdata.eventMetadata as Record<string, unknown>)?.priceToBeat != null) {
-      return parseFloat(String((qdata.eventMetadata as Record<string, unknown>).priceToBeat));
+function readCache(windowStartMs: number): LockedStrike | null {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as LockedStrike;
+    if (parsed.windowStartMs === windowStartMs && typeof parsed.strikeValue === 'number') {
+      return parsed;
     }
-
-    if (Array.isArray(qdata.events)) {
-      const match = (qdata.events as Record<string, unknown>[]).find(
-        (e) => e.slug === slug && (e.eventMetadata as Record<string, unknown>)?.priceToBeat != null,
-      );
-      if (match) return parseFloat(String((match.eventMetadata as Record<string, unknown>).priceToBeat));
-    }
-  }
-
+  } catch { /* ignore */ }
   return null;
 }
 
-async function fetchPriceToBeat(slug: string): Promise<number | null> {
-  if (cachedBuildId) {
-    try {
-      const res = await fetch(
-        `/polymarket/_next/data/${cachedBuildId}/en/event/${slug}.json?slug=${slug}`,
-        { headers: { 'x-nextjs-data': '1' } },
-      );
-      if (res.ok) {
-        const data = await res.json();
-        return findPriceToBeat(data, slug);
-      }
-      if (res.status === 404) cachedBuildId = null;
-    } catch {}
-  }
-
-  const res = await fetch(`/polymarket/event/${slug}`);
-  if (!res.ok) throw new Error(`Polymarket event page HTTP ${res.status}`);
-  const html = await res.text();
-
-  const m = html.match(/__NEXT_DATA__[^>]*>([\s\S]+?)<\/script>/);
-  if (!m) throw new Error('__NEXT_DATA__ not found in Polymarket page');
-
-  const nextData = JSON.parse(m[1]);
-  cachedBuildId = nextData.buildId;
-
-  return findPriceToBeat(nextData, slug);
+function writeCache(lock: LockedStrike): void {
+  try { localStorage.setItem(CACHE_KEY, JSON.stringify(lock)); } catch { /* ignore */ }
 }
 
+// ── Hook ──────────────────────────────────────────────────────────────────────
+
+/**
+ * Returns the "Price to Beat" for the active 5-minute window.
+ *
+ * Source:  Polymarket Chainlink RTDS  (wss://ws-live-data.polymarket.com)
+ * Rule:    strike = first tick where tick.timestamp >= windowStartMs
+ * Freeze:  once selected within a window, the value NEVER changes again
+ *          for that window, regardless of subsequent RTDS ticks.
+ */
 export function useStrikePrice(): number | null {
-  const [strikePrice, setStrikePrice] = useState<number | null>(null);
-  const lastWindowRef = useRef<number | null>(null);
-  const fetchingRef   = useRef(false);
-
-  useEffect(() => {
-    if (process.env.NODE_ENV === 'production') return;
+  const [strikePrice, setStrikePrice] = useState<number | null>(() => {
+    if (typeof window === 'undefined') return null;
     const windowStartMs = Math.floor(Date.now() / 300_000) * 300_000;
-    fetch('/api/price-to-beat')
-      .then(r => r.ok ? r.json() : null)
-      .then((data: { price?: number; window_start?: number } | null) => {
-        if (data?.price != null && data.window_start === windowStartMs) {
-          setStrikePrice(data.price);
-          lastWindowRef.current = windowStartMs;
-        }
-      })
-      .catch((e: unknown) => console.warn('[useStrikePrice] local api:', e));
-  }, []);
+    return readCache(windowStartMs)?.strikeValue ?? null;
+  });
+
+  // lockedRef is the single source of truth for whether a strike has been
+  // chosen for the current window.  It is set exactly ONCE per window and
+  // is never cleared within that window.
+  const lockedRef = useRef<LockedStrike | null>(null);
 
   useEffect(() => {
-    const check = async () => {
+    // ── 1. Restore cache into ref before any compute() runs ─────────────────
+    const initWindowMs = Math.floor(Date.now() / 300_000) * 300_000;
+    const cached       = readCache(initWindowMs);
+    if (cached) {
+      lockedRef.current = cached;
+      console.debug(
+        '[useStrikePrice] restored from localStorage',
+        'window:', new Date(initWindowMs).toISOString(),
+        'strikeValue:', cached.strikeValue,
+        'tickTs:', new Date(cached.strikeTimestamp).toISOString(),
+      );
+    }
+
+    chainlinkRtds.start();
+
+    // ── 2. Core compute — called on every tick and every 1-second poll ───────
+    const compute = (incomingTick?: ChainlinkTick) => {
       const windowStartMs = Math.floor(Date.now() / 300_000) * 300_000;
-      if (lastWindowRef.current === windowStartMs) return;
-      if (fetchingRef.current) return;
+      const locked        = lockedRef.current;
 
-      fetchingRef.current = true;
-      const slug = btc5mSlug(Date.now());
-      try {
-        const price = await fetchPriceToBeat(slug);
+      console.debug(
+        '[useStrikePrice] compute | currentWindow:', new Date(windowStartMs).toISOString(),
+        '| lockedWindow:', locked ? new Date(locked.windowStartMs).toISOString() : 'none',
+      );
 
-        if (price != null && !isNaN(price)) {
-          lastWindowRef.current = windowStartMs;
-          setStrikePrice(price);
-        } else {
-          const clPrice = await getWindowOpenPrice(windowStartMs);
-          if (clPrice != null && isFinite(clPrice)) {
-            lastWindowRef.current = windowStartMs;
-            setStrikePrice(clPrice);
-          }
+      // ── GUARD: strike already frozen for this window ─────────────────────
+      if (locked && locked.windowStartMs === windowStartMs) {
+        if (incomingTick) {
+          console.debug(
+            '[useStrikePrice] ignoring tick — strike already locked for this window',
+            'incomingTick:', incomingTick.price, new Date(incomingTick.timestamp).toISOString(),
+            'lockedStrike:', locked.strikeValue,
+          );
         }
-      } catch (err) {
-        console.error('[useStrikePrice]', err);
-      } finally {
-        fetchingRef.current = false;
+        return; // do nothing — state is already correct
       }
+
+      // ── New window or no lock yet ─────────────────────────────────────────
+
+      // Check localStorage (survives page refresh)
+      const fromCache = readCache(windowStartMs);
+      if (fromCache) {
+        lockedRef.current = fromCache;
+        setStrikePrice(fromCache.strikeValue);
+        console.debug(
+          '[useStrikePrice] strike reused from cache',
+          'window:', new Date(windowStartMs).toISOString(),
+          'strikeValue:', fromCache.strikeValue,
+          'source:', fromCache.source,
+        );
+        return;
+      }
+
+      // No cache — find the first RTDS tick at or after the window boundary
+      const tick = chainlinkRtds.getFirstTickAtOrAfter(windowStartMs);
+      if (!tick) {
+        console.debug(
+          '[useStrikePrice] waiting for first RTDS tick',
+          'window:', new Date(windowStartMs).toISOString(),
+        );
+        return;
+      }
+
+      // ── LOCK the strike for this window — only happens once per window ────
+      const newLock: LockedStrike = {
+        windowStartMs,
+        strikeValue:     tick.price,
+        strikeTimestamp: tick.timestamp,
+        source:          'polymarket_chainlink_rtds',
+      };
+      lockedRef.current = newLock;
+      setStrikePrice(tick.price);
+      writeCache(newLock);
+
+      console.debug(
+        '[useStrikePrice] NEW strike selected and locked',
+        'window:', new Date(windowStartMs).toISOString(),
+        'tickTs:', new Date(tick.timestamp).toISOString(),
+        'strikeValue:', tick.price,
+        'source: polymarket_chainlink_rtds',
+      );
     };
 
-    check();
-    const id = setInterval(check, 1000);
-    return () => clearInterval(id);
-  }, []);
+    // Subscribe to RTDS ticks (passes the incoming tick so we can log it when ignored)
+    const unsub    = chainlinkRtds.subscribe((tick) => compute(tick));
+    // Poll every second to catch window rollovers when no tick is in flight
+    const interval = setInterval(() => compute(), 1_000);
+    // Run immediately with whatever is already in the buffer
+    compute();
+
+    return () => {
+      unsub();
+      clearInterval(interval);
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return strikePrice;
 }
