@@ -1,10 +1,19 @@
 import { useEffect, useState } from 'react';
 import { ethers } from 'ethers';
 import { ClobClient } from '@polymarket/clob-client';
+import { BuilderConfig } from '@polymarket/builder-signing-sdk';
 import { MAINNET } from '@/config/networks';
 import type { ToastType, ApiCreds } from '@/types';
 
 type ShowToast = (type: ToastType, msg: string) => void;
+
+const builderConfig = new BuilderConfig({
+  localBuilderCreds: {
+    key:        process.env.NEXT_PUBLIC_POLY_BUILDER_KEY!,
+    secret:     process.env.NEXT_PUBLIC_POLY_BUILDER_SECRET!,
+    passphrase: process.env.NEXT_PUBLIC_POLY_BUILDER_PASSPHRASE!,
+  },
+});
 
 export function useWallet(showToast: ShowToast) {
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
@@ -79,7 +88,14 @@ export function useWallet(showToast: ShowToast) {
 
       const tempClient = new ClobClient(net.clobApi, net.chainId, signer);
       const apiCreds: ApiCreds = await tempClient.createOrDeriveApiKey();
-      const client = new ClobClient(net.clobApi, net.chainId, signer, apiCreds, 0, address);
+      const client = new ClobClient(
+        net.clobApi, net.chainId, signer, apiCreds,
+        0,           // signatureType
+        address,     // funderAddress
+        undefined,   // geoBlockToken
+        false,       // useServerTime
+        builderConfig as any, // eslint-disable-line @typescript-eslint/no-explicit-any
+      );
 
       const usdcContract = new ethers.Contract(
         net.usdcAddress,
@@ -133,7 +149,14 @@ export function useWallet(showToast: ShowToast) {
         const address = await signer.getAddress();
         const apiCreds: ApiCreds = JSON.parse(storedCreds);
 
-        const client = new ClobClient(net.clobApi, net.chainId, signer, apiCreds, 0, address);
+        const client = new ClobClient(
+        net.clobApi, net.chainId, signer, apiCreds,
+        0,           // signatureType
+        address,     // funderAddress
+        undefined,   // geoBlockToken
+        false,       // useServerTime
+        builderConfig as any, // eslint-disable-line @typescript-eslint/no-explicit-any
+      );
 
         const usdcContract = new ethers.Contract(
           net.usdcAddress,
