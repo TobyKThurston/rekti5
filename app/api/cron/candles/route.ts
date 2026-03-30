@@ -1,17 +1,10 @@
-/**
- * Vercel Cron — runs every minute.
- * Fetches the just-completed 1-minute BTC/USD candle from Kraken's public
- * REST API and upserts it into Postgres so history is persisted server-side
- * even when no browser client is open.
- *
- * Kraken OHLC entry shape: [time, open, high, low, close, vwap, volume, count]
- */
 import { NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
 import { upsertCandle } from '@/lib/candles';
 
 export const runtime = 'nodejs';
 
+// Kraken OHLC entry shape: [time, open, high, low, close, vwap, volume, count]
 type KrakenEntry = [number, string, string, string, string, string, string, number];
 
 interface KrakenOhlcResponse {
@@ -22,15 +15,8 @@ interface KrakenOhlcResponse {
   };
 }
 
-export async function GET(request: Request): Promise<NextResponse> {
-  // Protect the endpoint: Vercel automatically sends Authorization: Bearer <CRON_SECRET>
-  const auth = request.headers.get('authorization');
-  if (process.env.CRON_SECRET && auth !== `Bearer ${process.env.CRON_SECRET}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
+export async function GET(): Promise<NextResponse> {
   try {
-    // Fetch ~3 minutes of 1-min OHLC so we always capture the just-completed bar
     const since = Math.floor(Date.now() / 1000) - 180;
     const res = await fetch(
       `https://api.kraken.com/0/public/OHLC?pair=XBTUSD&interval=1&since=${since}`,
@@ -52,8 +38,7 @@ export async function GET(request: Request): Promise<NextResponse> {
       return NextResponse.json({ ok: true, count: 0 });
     }
 
-    // Kraken always returns the current incomplete candle last — skip anything
-    // within the current minute boundary.
+    // Skip the current incomplete candle (Kraken always returns it last)
     const cutoffSec = Math.floor(Date.now() / 1000 / 60) * 60;
     const completed = entries.filter(([time]) => time < cutoffSec);
 
