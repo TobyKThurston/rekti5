@@ -7,13 +7,13 @@ import type { ToastType, ApiCreds } from '@/types';
 
 type ShowToast = (type: ToastType, msg: string) => void;
 
-const builderConfig = new BuilderConfig({
-  localBuilderCreds: {
-    key:        process.env.NEXT_PUBLIC_POLY_BUILDER_KEY        ?? '',
-    secret:     process.env.NEXT_PUBLIC_POLY_BUILDER_SECRET     ?? '',
-    passphrase: process.env.NEXT_PUBLIC_POLY_BUILDER_PASSPHRASE ?? '',
-  },
-});
+const _bKey  = process.env.NEXT_PUBLIC_POLY_BUILDER_KEY;
+const _bSec  = process.env.NEXT_PUBLIC_POLY_BUILDER_SECRET;
+const _bPass = process.env.NEXT_PUBLIC_POLY_BUILDER_PASSPHRASE;
+
+const builderConfig = (_bKey && _bSec && _bPass)
+  ? new BuilderConfig({ localBuilderCreds: { key: _bKey, secret: _bSec, passphrase: _bPass } })
+  : undefined;
 
 export function useWallet(showToast: ShowToast) {
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
