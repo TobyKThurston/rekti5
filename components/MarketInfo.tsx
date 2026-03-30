@@ -62,8 +62,8 @@ export function MarketInfo({
                   RESOLUTION PRICE
                 </div>
                 <ScrollingNumber
-                  value={btcPrice != null
-                    ? `$${btcPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                  value={(btcPrice ?? marketStrikePrice) != null
+                    ? `$${(btcPrice ?? marketStrikePrice)!.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
                     : '—'}
                   className="text-[22px] font-bold text-[#f5f5f5] leading-none"
                 />
