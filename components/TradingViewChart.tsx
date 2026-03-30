@@ -15,23 +15,25 @@ import { priceEngine } from '@/lib/priceEngine';
 
 const STORAGE_KEY = 'btc-1m-bars';
 const MAX_BARS = 500;
+const SYMBOL = 'BTCUSD';
 
-function loadBars(): CandlestickData<Time>[] {
+// ─── localStorage cache helpers ──────────────────────────────────────────────
+
+function loadCachedBars(): CandlestickData<Time>[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return [];
     const bars = JSON.parse(raw) as CandlestickData<Time>[];
-    // Discard bars from previous UTC days to prevent stale data on reload
     const todayStartSec = Math.floor(
-      new Date(new Date().toISOString().slice(0, 10) + 'T00:00:00Z').getTime() / 1000
+      new Date(new Date().toISOString().slice(0, 10) + 'T00:00:00Z').getTime() / 1000,
     );
-    return bars.filter(b => (b.time as number) >= todayStartSec);
+    return bars.filter((b) => (b.time as number) >= todayStartSec);
   } catch {
     return [];
   }
 }
 
-function saveBars(bars: Map<Time, CandlestickData<Time>>): void {
+function saveCachedBars(bars: Map<Time, CandlestickData<Time>>): void {
   try {
     const arr = [...bars.values()].slice(-MAX_BARS);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(arr));
@@ -39,6 +41,43 @@ function saveBars(bars: Map<Time, CandlestickData<Time>>): void {
     // storage full or unavailable
   }
 }
+
+// ─── Server helpers ───────────────────────────────────────────────────────────
+
+async function fetchServerHistory(): Promise<CandlestickData<Time>[]> {
+  try {
+    const res = await fetch(`/api/chart/history?symbol=${SYMBOL}&limit=${MAX_BARS}`);
+    if (!res.ok) return [];
+    const data = (await res.json()) as Array<{
+      time: number;
+      open: number;
+      high: number;
+      low: number;
+      close: number;
+    }>;
+    return data.map((c) => ({ ...c, time: c.time as Time }));
+  } catch {
+    return [];
+  }
+}
+
+function persistCandle(bar: CandlestickData<Time>): void {
+  // fire-and-forget — failures are silent so they never affect the chart
+  fetch('/api/chart/candle', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      symbol: SYMBOL,
+      bucketStart: bar.time,
+      open: bar.open,
+      high: bar.high,
+      low: bar.low,
+      close: bar.close,
+    }),
+  }).catch(() => undefined);
+}
+
+// ─── Component ────────────────────────────────────────────────────────────────
 
 interface TradingViewChartProps {
   targetPrice?: number;
@@ -78,16 +117,37 @@ export function TradingViewChart({ targetPrice = 64500 }: TradingViewChartProps)
     chartRef.current = chart;
     seriesRef.current = series;
 
-    // Restore persisted bars
-    const saved = loadBars();
-    if (saved.length > 0) {
+    // 1. Paint localStorage cache immediately for instant first render
+    const cached = loadCachedBars();
+    if (cached.length > 0) {
       const map = new Map<Time, CandlestickData<Time>>();
-      for (const bar of saved) map.set(bar.time, bar);
+      for (const bar of cached) map.set(bar.time, bar);
       barsRef.current = map;
-      series.setData(saved);
-      // Restore the last bar as the current live bar
-      currentBarRef.current = saved[saved.length - 1];
+      series.setData(cached);
+      currentBarRef.current = cached[cached.length - 1];
     }
+
+    // 2. Fetch canonical server history and reconcile
+    fetchServerHistory().then((serverBars) => {
+      if (!seriesRef.current || serverBars.length === 0) return;
+
+      const map = new Map<Time, CandlestickData<Time>>();
+      for (const bar of serverBars) map.set(bar.time, bar);
+
+      // Keep the live in-memory bar if it belongs to the current minute
+      const liveBar = currentBarRef.current;
+      const nowMinuteSec = (Math.floor(Date.now() / 1000 / 60) * 60) as Time;
+      if (liveBar && liveBar.time === nowMinuteSec) {
+        map.set(liveBar.time, liveBar);
+      }
+
+      barsRef.current = map;
+      const merged = [...map.values()].sort(
+        (a, b) => (a.time as number) - (b.time as number),
+      );
+      seriesRef.current.setData(merged);
+      saveCachedBars(map);
+    });
 
     priceEngine.start();
 
@@ -100,9 +160,12 @@ export function TradingViewChart({ targetPrice = 64500 }: TradingViewChartProps)
 
       if (isNewBar) {
         nextBar = { time: barTime, open: price, high: price, low: price, close: price };
-        // Persist when a new bar opens (saves the completed previous bar too)
-        if (cur) barsRef.current.set(cur.time, cur);
-        saveBars(barsRef.current);
+        if (cur) {
+          barsRef.current.set(cur.time, cur);
+          // Persist the just-completed bar to Postgres
+          persistCandle(cur);
+        }
+        saveCachedBars(barsRef.current);
       } else {
         nextBar = {
           time: barTime,
@@ -115,14 +178,15 @@ export function TradingViewChart({ targetPrice = 64500 }: TradingViewChartProps)
 
       barsRef.current.set(barTime, nextBar);
       currentBarRef.current = nextBar;
-      series.update(nextBar);
+      seriesRef.current?.update(nextBar);
     });
 
-    // Save current partial bar on page unload
     const handleUnload = () => {
-      if (currentBarRef.current) {
-        barsRef.current.set(currentBarRef.current.time, currentBarRef.current);
-        saveBars(barsRef.current);
+      const bar = currentBarRef.current;
+      if (bar) {
+        barsRef.current.set(bar.time, bar);
+        saveCachedBars(barsRef.current);
+        persistCandle(bar);
       }
     };
     window.addEventListener('beforeunload', handleUnload);

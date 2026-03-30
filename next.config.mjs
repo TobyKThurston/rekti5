@@ -13,6 +13,8 @@ const nextConfig = {
     ];
   },
   webpack(config, { isServer }) {
+    const webpack = require('webpack');
+
     if (!isServer) {
       config.resolve.fallback = {
         buffer:  require.resolve('buffer/'),
@@ -20,7 +22,6 @@ const nextConfig = {
         stream:  require.resolve('stream-browserify'),
         process: require.resolve('process/browser'),
       };
-      const webpack = require('webpack');
       config.plugins.push(
         new webpack.ProvidePlugin({
           Buffer:  ['buffer', 'Buffer'],
@@ -28,10 +29,21 @@ const nextConfig = {
         }),
       );
     }
+
+    // postgres (and other modern packages) use node: URI imports (node:crypto,
+    // node:net, etc.) which webpack doesn't resolve by default. Strip the prefix
+    // so webpack falls through to Node built-ins on the server, or to the
+    // resolve.fallback polyfills on the client.
+    config.plugins.push(
+      new webpack.NormalModuleReplacementPlugin(/^node:/, (resource) => {
+        resource.request = resource.request.replace(/^node:/, '');
+      }),
+    );
+
     return config;
   },
   experimental: {
-    serverComponentsExternalPackages: ['better-sqlite3'],
+    serverComponentsExternalPackages: ['better-sqlite3', 'postgres'],
   },
 };
 
