@@ -9,9 +9,9 @@ type ShowToast = (type: ToastType, msg: string) => void;
 
 const builderConfig = new BuilderConfig({
   localBuilderCreds: {
-    key:        process.env.NEXT_PUBLIC_POLY_BUILDER_KEY!,
-    secret:     process.env.NEXT_PUBLIC_POLY_BUILDER_SECRET!,
-    passphrase: process.env.NEXT_PUBLIC_POLY_BUILDER_PASSPHRASE!,
+    key:        process.env.NEXT_PUBLIC_POLY_BUILDER_KEY        ?? '',
+    secret:     process.env.NEXT_PUBLIC_POLY_BUILDER_SECRET     ?? '',
+    passphrase: process.env.NEXT_PUBLIC_POLY_BUILDER_PASSPHRASE ?? '',
   },
 });
 
