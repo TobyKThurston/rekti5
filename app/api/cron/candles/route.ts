@@ -3,6 +3,7 @@ import { getDb } from '@/lib/db';
 import { upsertCandle } from '@/lib/candles';
 
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 // Kraken OHLC entry shape: [time, open, high, low, close, vwap, volume, count]
 type KrakenEntry = [number, string, string, string, string, string, string, number];
