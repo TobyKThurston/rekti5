@@ -12,30 +12,33 @@ const nextConfig = {
       { source: '/polymarket/:path*', destination: 'https://polymarket.com/:path*' },
     ];
   },
-  webpack(config, { isServer }) {
-    const webpack = require('webpack');
-
+  // The second argument includes Next.js's own webpack instance — use it
+  // instead of require('webpack') so plugins are registered on the correct
+  // internal build of webpack that Next.js actually uses.
+  webpack(config, { isServer, webpack: wp }) {
     if (!isServer) {
+      // Explicit node: fallbacks so packages like @polymarket/builder-signing-sdk
+      // (node:crypto) work in the browser bundle without any plugin magic.
       config.resolve.fallback = {
-        buffer:  require.resolve('buffer/'),
-        crypto:  require.resolve('crypto-browserify'),
-        stream:  require.resolve('stream-browserify'),
-        process: require.resolve('process/browser'),
+        buffer:       require.resolve('buffer/'),
+        crypto:       require.resolve('crypto-browserify'),
+        'node:crypto': require.resolve('crypto-browserify'),
+        stream:       require.resolve('stream-browserify'),
+        'node:stream': require.resolve('stream-browserify'),
+        process:      require.resolve('process/browser'),
       };
       config.plugins.push(
-        new webpack.ProvidePlugin({
+        new wp.ProvidePlugin({
           Buffer:  ['buffer', 'Buffer'],
           process: 'process/browser',
         }),
       );
     }
 
-    // postgres (and other modern packages) use node: URI imports (node:crypto,
-    // node:net, etc.) which webpack doesn't resolve by default. Strip the prefix
-    // so webpack falls through to Node built-ins on the server, or to the
-    // resolve.fallback polyfills on the client.
+    // Belt-and-suspenders: strip node: prefix for any remaining cases
+    // (e.g. postgres on the server before serverComponentsExternalPackages kicks in).
     config.plugins.push(
-      new webpack.NormalModuleReplacementPlugin(/^node:/, (resource) => {
+      new wp.NormalModuleReplacementPlugin(/^node:/, (resource) => {
         resource.request = resource.request.replace(/^node:/, '');
       }),
     );
