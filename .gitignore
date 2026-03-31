@@ -5,3 +5,8 @@ dist
 .env
 .env.*
 .claude
+.vercel
+.env*.local
+*.db
+*.db-shm
+*.db-wal

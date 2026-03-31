@@ -159,7 +159,8 @@ export function TradingViewChart({ targetPrice = 64500 }: TradingViewChartProps)
       let nextBar: CandlestickData<Time>;
 
       if (isNewBar) {
-        nextBar = { time: barTime, open: price, high: price, low: price, close: price };
+        const open = cur ? cur.close : price;
+        nextBar = { time: barTime, open, high: Math.max(open, price), low: Math.min(open, price), close: price };
         if (cur) {
           barsRef.current.set(cur.time, cur);
           // Persist the just-completed bar to Postgres

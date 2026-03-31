@@ -78,9 +78,12 @@ export function SignalStack({ strikePrice, recentResults, whaleTrades }: SignalS
       {/* MOMENTUM */}
       <div className="flex flex-col items-center justify-center py-3.5 px-3 shrink-0">
         <div className="text-[9px] tracking-[0.08em] text-[#666c77] mb-1">MOMENTUM</div>
-        <div className="text-[11px] font-bold tracking-wide" style={{ color: momentumColor }}>
-          {momentum.label}
+        <div className="text-[13px] font-bold tabular-nums leading-none" style={{ color: momentumColor }}>
+          {momentum.rawDelta != null
+            ? `${momentum.rawDelta >= 0 ? '+' : ''}$${Math.abs(momentum.rawDelta).toFixed(2)}`
+            : '—'}
         </div>
+        <div className="text-[8.5px] text-[#666c77] mt-0.5">last 60s</div>
       </div>
 
       <div className="h-px bg-[#22242a] shrink-0" />
