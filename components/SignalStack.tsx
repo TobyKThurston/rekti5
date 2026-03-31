@@ -153,6 +153,19 @@ export function SignalStack({ strikePrice, recentResults, whaleTrades }: SignalS
       {/* spacer */}
       <div className="flex-1" />
 
+      {/* TRUST */}
+      <div className="flex flex-col items-center gap-1 px-3 py-3 border-t border-[#22242a]">
+        <div className="text-[8px] text-[#444950] text-center leading-relaxed tracking-[0.06em]">
+          Trades executed via Polymarket
+        </div>
+        <div className="text-[8px] text-[#444950] text-center leading-relaxed tracking-[0.06em]">
+          Custody via MetaMask
+        </div>
+        <div className="text-[8px] text-[#444950] text-center leading-relaxed tracking-[0.06em]">
+          No funds held by Rekti5
+        </div>
+      </div>
+
     </div>
   );
 }
