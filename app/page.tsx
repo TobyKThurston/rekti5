@@ -21,18 +21,19 @@ export default function LandingPage() {
           {/* Left */}
           <div className="flex flex-col gap-6">
             <p className="text-[#f09000] text-[10px] font-bold tracking-[0.14em] uppercase">
-              BTC / 5-MIN · POLYMARKET
+              POLYMARKET · BITCOIN · 5-MINUTE MARKETS ONLY
             </p>
             <h1 className="text-[36px] font-bold leading-tight tracking-[0.03em] text-[#e8e8e8]">
-              Execute faster than{" "}
+              Trade BTC 5-min faster than{" "}
               <TypewriterText text="the market reprices." className="text-[#f09000]" />
             </h1>
             <p className="text-[11px] text-[#444950] tracking-[0.08em] uppercase">
-              In 5-min markets, latency is the loss.
+              Built for one market: Polymarket BTC 5-minute.
             </p>
             <p className="text-[14px] text-[#666c77] leading-relaxed tracking-[0.03em]">
-              Whale flow detection and momentum scoring surface mispricing before it closes.
-              Sub-100ms CLOB execution means you&apos;re in before the price corrects.
+              Each 5-minute BTC window opens and closes fast. Whale flow detection and momentum
+              scoring surface mispricing before it closes — sub-100ms CLOB execution means
+              you&apos;re in before the price corrects.
             </p>
             <div className="flex flex-col gap-2">
               <a
@@ -42,7 +43,7 @@ export default function LandingPage() {
                 Open Terminal →
               </a>
               <p className="text-[9px] text-[#444950] tracking-[0.08em] uppercase text-center">
-                $2M+ VOLUME TRACKED  ·  ~87ms AVG EXECUTION  ·  DIRECT CLOB  ·  NON-CUSTODIAL
+                BTC 5-MIN ONLY  ·  ~87ms AVG EXECUTION  ·  DIRECT CLOB  ·  NON-CUSTODIAL
               </p>
             </div>
           </div>
