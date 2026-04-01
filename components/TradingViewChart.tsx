@@ -21,8 +21,7 @@ import {
 } from '@/lib/candleValidation';
 
 const STORAGE_KEY = 'btc-1m-bars';
-const MAX_BARS = 500;
-const SYMBOL = 'BTCUSD';
+const MAX_BARS = 720;
 
 // ─── localStorage cache helpers ──────────────────────────────────────────────
 
@@ -49,43 +48,19 @@ function saveCachedBars(bars: Map<Time, CandlestickData<Time>>): void {
   }
 }
 
-// ─── Server helpers ───────────────────────────────────────────────────────────
+// ─── Kraken history ───────────────────────────────────────────────────────────
 
-async function fetchServerHistory(): Promise<CandlestickData<Time>[]> {
+async function fetchKrakenHistory(): Promise<CandlestickData<Time>[]> {
   try {
-    const res = await fetch(`/api/chart/history?symbol=${SYMBOL}&limit=${MAX_BARS}`);
+    const res = await fetch('/api/kraken/ohlc');
     if (!res.ok) return [];
-    const data = (await res.json()) as Array<{
-      time: number;
-      open: number;
-      high: number;
-      low: number;
-      close: number;
-    }>;
-    return data.map((c) => ({ ...c, time: c.time as Time }));
+    const data = await res.json();
+    return data.map((c: { time: number; open: number; high: number; low: number; close: number }) => ({
+      ...c,
+      time: c.time as Time,
+    }));
   } catch {
     return [];
-  }
-}
-
-function persistCandle(bar: CandlestickData<Time>, beacon = false): void {
-  const body = JSON.stringify({
-    symbol: SYMBOL,
-    bucketStart: bar.time,
-    open: bar.open,
-    high: bar.high,
-    low: bar.low,
-    close: bar.close,
-  });
-  if (beacon && typeof navigator !== 'undefined' && navigator.sendBeacon) {
-    // sendBeacon survives tab close; browser guarantees delivery
-    navigator.sendBeacon('/api/chart/candle', new Blob([body], { type: 'application/json' }));
-  } else {
-    fetch('/api/chart/candle', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body,
-    }).catch(() => undefined);
   }
 }
 
@@ -105,7 +80,7 @@ export function TradingViewChart({ targetPrice = 64500 }: TradingViewChartProps)
   // Validation state — all mutable, never trigger re-renders
   const lastAcceptedPriceRef = useRef<number | null>(null);
   const finalizedBucketsRef = useRef<Set<number>>(new Set());
-  const prevFinalizedCandleRef = useRef<CandleState | null>(null);
+  const prevFinalizedCandleRef = useRef<CandleState | null>(null); // debugging only
 
   // Init chart once
   useEffect(() => {
@@ -143,12 +118,12 @@ export function TradingViewChart({ targetPrice = 64500 }: TradingViewChartProps)
       currentBarRef.current = cached[cached.length - 1];
     }
 
-    // 2. Fetch canonical server history and reconcile
-    fetchServerHistory().then((serverBars) => {
-      if (!seriesRef.current || serverBars.length === 0) return;
+    // 2. Fetch Kraken history and reconcile
+    fetchKrakenHistory().then((krakenBars) => {
+      if (!seriesRef.current || krakenBars.length === 0) return;
 
       const map = new Map<Time, CandlestickData<Time>>();
-      for (const bar of serverBars) map.set(bar.time, bar);
+      for (const bar of krakenBars) map.set(bar.time, bar);
 
       // Keep the live in-memory bar if it belongs to the current minute
       const liveBar = currentBarRef.current;
@@ -164,17 +139,18 @@ export function TradingViewChart({ targetPrice = 64500 }: TradingViewChartProps)
       seriesRef.current.setData(merged);
       saveCachedBars(map);
 
-      // Seed the sanity-check reference from the last completed server bar
-      const lastServerBar = merged.at(-1);
-      if (lastServerBar) {
+      // Seed currentBarRef from the last Kraken candle so live ticks continue correctly
+      const lastBar = merged.at(-1);
+      if (lastBar) {
+        currentBarRef.current = lastBar;
         prevFinalizedCandleRef.current = {
-          bucketStart: lastServerBar.time as number,
-          open: lastServerBar.open,
-          high: lastServerBar.high,
-          low: lastServerBar.low,
-          close: lastServerBar.close,
+          bucketStart: lastBar.time as number,
+          open: lastBar.open,
+          high: lastBar.high,
+          low: lastBar.low,
+          close: lastBar.close,
         };
-        lastAcceptedPriceRef.current = lastServerBar.close;
+        lastAcceptedPriceRef.current = lastBar.close;
       }
     });
 
@@ -223,22 +199,18 @@ export function TradingViewChart({ targetPrice = 64500 }: TradingViewChartProps)
             sanity.warnings.forEach((w) => console.warn('[candle]', w));
           }
 
-          if (sanity.ok || !CANDLE_CONFIG.skipOnSanityFailure) {
-            console.log('[candle] finalized', candleState);
-            barsRef.current.set(cur.time, cur);
-            persistCandle(cur);
+          console.log('[candle] finalized', candleState);
+          barsRef.current.set(cur.time, cur);
 
-            // Guard: mark bucket as finalized so late ticks are rejected
-            finalizedBucketsRef.current.add(cur.time as number);
-            // Cap set size to ~2 hours of buckets to prevent memory growth
-            if (finalizedBucketsRef.current.size > 120) {
-              const oldest = [...finalizedBucketsRef.current].sort((a, b) => a - b)[0];
-              finalizedBucketsRef.current.delete(oldest);
-            }
+          // Guard: mark bucket as finalized so late ticks are rejected
+          finalizedBucketsRef.current.add(cur.time as number);
 
-            prevFinalizedCandleRef.current = candleState;
-          } else {
-            console.warn('[candle] skipped write — sanity failure', candleState);
+          prevFinalizedCandleRef.current = candleState;
+
+          // Trim in-memory map to MAX_BARS
+          if (barsRef.current.size > MAX_BARS) {
+            const oldest = [...barsRef.current.keys()].sort((a, b) => +a - +b)[0];
+            barsRef.current.delete(oldest);
           }
 
           saveCachedBars(barsRef.current);
@@ -259,6 +231,8 @@ export function TradingViewChart({ targetPrice = 64500 }: TradingViewChartProps)
         seriesRef.current?.update(newBar);
       } else {
         // ── 5. Update in-progress bar ─────────────────────────────────────────
+        // Ignore ticks older than the current open candle (e.g. delayed live feed after Kraken seed)
+        if ((bucketStart as number) < (cur!.time as number)) return;
         const nextBar: CandlestickData<Time> = {
           time: bucketStart,
           open: cur.open,
@@ -272,19 +246,16 @@ export function TradingViewChart({ targetPrice = 64500 }: TradingViewChartProps)
       }
     });
 
-    const handleUnload = () => {
+    window.addEventListener('beforeunload', () => {
       const bar = currentBarRef.current;
       if (bar) {
         barsRef.current.set(bar.time, bar);
         saveCachedBars(barsRef.current);
-        persistCandle(bar, true);
       }
-    };
-    window.addEventListener('beforeunload', handleUnload);
+    });
 
     return () => {
       unsub();
-      window.removeEventListener('beforeunload', handleUnload);
       chart.remove();
       chartRef.current = null;
       seriesRef.current = null;
