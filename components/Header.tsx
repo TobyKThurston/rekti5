@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useBtcPrice } from '@/hooks/useBtcPrice';
 
 interface HeaderProps {
@@ -21,7 +22,7 @@ export function Header({
   return (
     <header className="fixed inset-x-0 top-0 z-20 h-11 border-b border-[#22242a] bg-[#131518] px-3">
       <div className="flex h-full items-center gap-4">
-        <div className="text-[13px] font-bold tracking-[0.12em] text-[#f09000]">Rekti5</div>
+        <Link href="/" className="text-[13px] font-bold tracking-[0.12em] text-[#f09000] hover:opacity-80">Rekti5</Link>
         <div className="hidden sm:block h-4 w-px bg-[#22242a]" />
         <div className="hidden sm:flex items-center gap-2 text-[11px]">
           <span className="text-[9px] tracking-[0.08em] text-[#f09000] font-semibold">ORACLE</span>
