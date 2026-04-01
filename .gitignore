@@ -10,3 +10,5 @@ dist
 *.db
 *.db-shm
 *.db-wal
+.next/
+tsconfig.tsbuildinfo
