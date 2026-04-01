@@ -30,10 +30,8 @@ function loadCachedBars(): CandlestickData<Time>[] {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return [];
     const bars = JSON.parse(raw) as CandlestickData<Time>[];
-    const todayStartSec = Math.floor(
-      new Date(new Date().toISOString().slice(0, 10) + 'T00:00:00Z').getTime() / 1000,
-    );
-    return bars.filter((b) => (b.time as number) >= todayStartSec);
+    const cutoffSec = Math.floor(Date.now() / 1000) - MAX_BARS * 60; // rolling 720-min window
+    return bars.filter((b) => (b.time as number) >= cutoffSec);
   } catch {
     return [];
   }
@@ -108,9 +106,15 @@ export function TradingViewChart({ targetPrice = 64500 }: TradingViewChartProps)
     chartRef.current = chart;
     seriesRef.current = series;
 
-    // 1. Paint localStorage cache immediately for instant first render
+    // 1. Paint localStorage cache immediately for instant first render,
+    //    but only if it's fresh enough that there won't be a visible gap.
+    //    Stale caches create an empty span between the last saved bar and
+    //    the current minute — better to wait for Kraken in that case.
     const cached = loadCachedBars();
-    if (cached.length > 0) {
+    const lastCachedTimeSec = cached.at(-1)?.time as number ?? 0;
+    const nowSec = Math.floor(Date.now() / 1000);
+    const cacheIsFresh = nowSec - lastCachedTimeSec <= 2 * 60; // within 2 minutes
+    if (cached.length > 0 && cacheIsFresh) {
       const map = new Map<Time, CandlestickData<Time>>();
       for (const bar of cached) map.set(bar.time, bar);
       barsRef.current = map;
