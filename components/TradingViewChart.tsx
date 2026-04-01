@@ -12,6 +12,13 @@ import {
   type Time,
 } from 'lightweight-charts';
 import { priceEngine } from '@/lib/priceEngine';
+import {
+  CANDLE_CONFIG,
+  getBucketStart,
+  validateTick,
+  checkCandleSanity,
+  type CandleState,
+} from '@/lib/candleValidation';
 
 const STORAGE_KEY = 'btc-1m-bars';
 const MAX_BARS = 500;
@@ -61,20 +68,25 @@ async function fetchServerHistory(): Promise<CandlestickData<Time>[]> {
   }
 }
 
-function persistCandle(bar: CandlestickData<Time>): void {
-  // fire-and-forget — failures are silent so they never affect the chart
-  fetch('/api/chart/candle', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      symbol: SYMBOL,
-      bucketStart: bar.time,
-      open: bar.open,
-      high: bar.high,
-      low: bar.low,
-      close: bar.close,
-    }),
-  }).catch(() => undefined);
+function persistCandle(bar: CandlestickData<Time>, beacon = false): void {
+  const body = JSON.stringify({
+    symbol: SYMBOL,
+    bucketStart: bar.time,
+    open: bar.open,
+    high: bar.high,
+    low: bar.low,
+    close: bar.close,
+  });
+  if (beacon && typeof navigator !== 'undefined' && navigator.sendBeacon) {
+    // sendBeacon survives tab close; browser guarantees delivery
+    navigator.sendBeacon('/api/chart/candle', new Blob([body], { type: 'application/json' }));
+  } else {
+    fetch('/api/chart/candle', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body,
+    }).catch(() => undefined);
+  }
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -90,6 +102,10 @@ export function TradingViewChart({ targetPrice = 64500 }: TradingViewChartProps)
   const priceLineRef = useRef<IPriceLine | null>(null);
   const currentBarRef = useRef<CandlestickData<Time> | null>(null);
   const barsRef = useRef<Map<Time, CandlestickData<Time>>>(new Map());
+  // Validation state — all mutable, never trigger re-renders
+  const lastAcceptedPriceRef = useRef<number | null>(null);
+  const finalizedBucketsRef = useRef<Set<number>>(new Set());
+  const prevFinalizedCandleRef = useRef<CandleState | null>(null);
 
   // Init chart once
   useEffect(() => {
@@ -147,39 +163,113 @@ export function TradingViewChart({ targetPrice = 64500 }: TradingViewChartProps)
       );
       seriesRef.current.setData(merged);
       saveCachedBars(map);
+
+      // Seed the sanity-check reference from the last completed server bar
+      const lastServerBar = merged.at(-1);
+      if (lastServerBar) {
+        prevFinalizedCandleRef.current = {
+          bucketStart: lastServerBar.time as number,
+          open: lastServerBar.open,
+          high: lastServerBar.high,
+          low: lastServerBar.low,
+          close: lastServerBar.close,
+        };
+        lastAcceptedPriceRef.current = lastServerBar.close;
+      }
     });
 
     priceEngine.start();
 
     const unsub = priceEngine.subscribe((price) => {
-      const barTime = (Math.floor(Date.now() / 1000 / 60) * 60) as Time;
-      const cur = currentBarRef.current;
+      const nowMs = Date.now();
+      const bucketStart = getBucketStart(nowMs) as Time;
 
-      const isNewBar = !cur || cur.time !== barTime;
-      let nextBar: CandlestickData<Time>;
+      // ── 1. Validate tick ────────────────────────────────────────────────────
+      const rejection = validateTick({
+        price,
+        timestampMs: nowMs,
+        prevAcceptedPrice: lastAcceptedPriceRef.current,
+        finalizedBuckets: finalizedBucketsRef.current,
+        config: CANDLE_CONFIG,
+      });
 
-      if (isNewBar) {
-        const open = cur ? cur.close : price;
-        nextBar = { time: barTime, open, high: Math.max(open, price), low: Math.min(open, price), close: price };
-        if (cur) {
-          barsRef.current.set(cur.time, cur);
-          // Persist the just-completed bar to Postgres
-          persistCandle(cur);
+      if (rejection) {
+        // Suppress duplicate-style noise; log everything else
+        if (rejection.reason !== 'late_finalized' || rejection.detail) {
+          console.warn('[candle] tick rejected', rejection);
         }
-        saveCachedBars(barsRef.current);
-      } else {
-        nextBar = {
-          time: barTime,
-          open: cur.open,
-          high: Math.max(cur.high, price),
-          low: Math.min(cur.low, price),
-          close: price,
-        };
+        return;
       }
 
-      barsRef.current.set(barTime, nextBar);
-      currentBarRef.current = nextBar;
-      seriesRef.current?.update(nextBar);
+      // ── 2. Accept tick ──────────────────────────────────────────────────────
+      lastAcceptedPriceRef.current = price as number;
+
+      const cur = currentBarRef.current;
+      const isNewBucket = !cur || cur.time !== bucketStart;
+
+      if (isNewBucket) {
+        // ── 3. Finalize the completed bar ─────────────────────────────────────
+        if (cur) {
+          const candleState: CandleState = {
+            bucketStart: cur.time as number,
+            open: cur.open,
+            high: cur.high,
+            low: cur.low,
+            close: cur.close,
+          };
+
+          const sanity = checkCandleSanity(candleState, prevFinalizedCandleRef.current, CANDLE_CONFIG);
+          if (!sanity.ok) {
+            sanity.warnings.forEach((w) => console.warn('[candle]', w));
+          }
+
+          if (sanity.ok || !CANDLE_CONFIG.skipOnSanityFailure) {
+            console.log('[candle] finalized', candleState);
+            barsRef.current.set(cur.time, cur);
+            persistCandle(cur);
+
+            // Guard: mark bucket as finalized so late ticks are rejected
+            finalizedBucketsRef.current.add(cur.time as number);
+            // Cap set size to ~2 hours of buckets to prevent memory growth
+            if (finalizedBucketsRef.current.size > 120) {
+              const oldest = [...finalizedBucketsRef.current].sort((a, b) => a - b)[0];
+              finalizedBucketsRef.current.delete(oldest);
+            }
+
+            prevFinalizedCandleRef.current = candleState;
+          } else {
+            console.warn('[candle] skipped write — sanity failure', candleState);
+          }
+
+          saveCachedBars(barsRef.current);
+        }
+
+        // ── 4. Open fresh bucket — open is the FIRST valid tick, not prev.close
+        //       (using prev.close as open caused the cross-bucket wick bug)
+        console.log('[candle] opened bucket', { bucketStart, price });
+        const newBar: CandlestickData<Time> = {
+          time: bucketStart,
+          open: price as number,
+          high: price as number,
+          low: price as number,
+          close: price as number,
+        };
+        currentBarRef.current = newBar;
+        barsRef.current.set(bucketStart, newBar);
+        seriesRef.current?.update(newBar);
+      } else {
+        // ── 5. Update in-progress bar ─────────────────────────────────────────
+        const nextBar: CandlestickData<Time> = {
+          time: bucketStart,
+          open: cur.open,
+          high: Math.max(cur.high, price as number),
+          low: Math.min(cur.low, price as number),
+          close: price as number,
+        };
+        currentBarRef.current = nextBar;
+        barsRef.current.set(bucketStart, nextBar);
+        seriesRef.current?.update(nextBar);
+      }
     });
 
     const handleUnload = () => {
@@ -187,7 +277,7 @@ export function TradingViewChart({ targetPrice = 64500 }: TradingViewChartProps)
       if (bar) {
         barsRef.current.set(bar.time, bar);
         saveCachedBars(barsRef.current);
-        persistCandle(bar);
+        persistCandle(bar, true);
       }
     };
     window.addEventListener('beforeunload', handleUnload);
