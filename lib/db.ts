@@ -10,6 +10,7 @@ export function getDb(): ReturnType<typeof postgres> {
       max: 5,
       idle_timeout: 20,
       connect_timeout: 10,
+      ssl: 'require',
     });
   }
   return _sql;
