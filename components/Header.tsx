@@ -58,12 +58,15 @@ export function Header({
             <span className="text-[#666c77] text-[10px]">USDC · Polygon</span>
           </button>
         ) : (
-          <button
-            onClick={connectWallet}
-            className="rounded-[2px] border border-[#f09000] px-2.5 py-1 text-[11px] text-[#f09000] hover:bg-[#1a1400]"
-          >
-            Connect Wallet
-          </button>
+          <div className="flex items-center gap-2">
+            <span className="hidden sm:block text-[10px] text-[#555b66]">Polygon · USDC</span>
+            <button
+              onClick={connectWallet}
+              className="rounded-[2px] border border-[#f09000] px-2.5 py-1 text-[11px] text-[#f09000] hover:bg-[#1a1400]"
+            >
+              Connect Wallet
+            </button>
+          </div>
         )}
       </div>
     </header>
