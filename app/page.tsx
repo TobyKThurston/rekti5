@@ -23,7 +23,7 @@ export default function LandingPage() {
             <p className="text-[#f09000] text-[10px] font-bold tracking-[0.14em] uppercase">
               POLYMARKET · BITCOIN · 5-MINUTE MARKETS ONLY
             </p>
-            <h1 className="text-[36px] font-bold leading-tight tracking-[0.03em] text-[#e8e8e8]">
+            <h1 className="text-[24px] font-bold leading-tight tracking-[0.03em] text-[#e8e8e8]">
               Trade BTC 5-min faster than{" "}
               <TypewriterText text="the market reprices." className="text-[#f09000]" />
             </h1>
