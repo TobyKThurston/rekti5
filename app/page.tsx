@@ -1,3 +1,5 @@
+import { TypewriterText } from '@/components/TypewriterText';
+
 export default function LandingPage() {
   return (
     <div className="min-h-screen bg-[#0d0e11] font-mono text-[#e8e8e8]">
@@ -23,7 +25,7 @@ export default function LandingPage() {
             </p>
             <h1 className="text-[36px] font-bold leading-tight tracking-[0.03em] text-[#e8e8e8]">
               Trade Polymarket BTC faster.{" "}
-              <span className="text-[#f09000]">Find the edge.</span>
+              <TypewriterText text="Find the edge." className="text-[#f09000]" />
             </h1>
             <p className="text-[14px] text-[#666c77] leading-relaxed tracking-[0.03em]">
               Real-time signals, sub-100ms execution, and one-click trading built for 5-minute BTC markets.
