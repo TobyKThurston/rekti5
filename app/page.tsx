@@ -21,24 +21,28 @@ export default function LandingPage() {
           {/* Left */}
           <div className="flex flex-col gap-6">
             <p className="text-[#f09000] text-[10px] font-bold tracking-[0.14em] uppercase">
-              BTC / 5-MIN MARKETS
+              BTC / 5-MIN · POLYMARKET
             </p>
             <h1 className="text-[36px] font-bold leading-tight tracking-[0.03em] text-[#e8e8e8]">
-              Trade Polymarket BTC faster.{" "}
-              <TypewriterText text="Find the edge." className="text-[#f09000]" />
+              Execute faster than{" "}
+              <TypewriterText text="the market reprices." className="text-[#f09000]" />
             </h1>
+            <p className="text-[11px] text-[#444950] tracking-[0.08em] uppercase">
+              In 5-min markets, latency is the loss.
+            </p>
             <p className="text-[14px] text-[#666c77] leading-relaxed tracking-[0.03em]">
-              Real-time signals, sub-100ms execution, and one-click trading built for 5-minute BTC markets.
+              Whale flow detection and momentum scoring surface mispricing before it closes.
+              Sub-100ms CLOB execution means you&apos;re in before the price corrects.
             </p>
             <div className="flex flex-col gap-2">
               <a
                 href="/terminal"
                 className="h-10 flex items-center justify-center bg-[#f09000] text-black text-[13px] font-bold rounded-[2px] tracking-[0.06em] hover:bg-[#d98000] transition-colors"
               >
-                Launch Terminal →
+                Open Terminal →
               </a>
-              <p className="text-[#444950] text-[9px] text-center tracking-[0.08em] uppercase">
-                Runs on Polymarket · You keep custody via MetaMask
+              <p className="text-[9px] text-[#444950] tracking-[0.08em] uppercase text-center">
+                $2M+ VOLUME TRACKED  ·  ~87ms AVG EXECUTION  ·  DIRECT CLOB  ·  NON-CUSTODIAL
               </p>
             </div>
           </div>
@@ -47,7 +51,7 @@ export default function LandingPage() {
           <div className="bg-[#131518] border border-[#22242a] rounded-[2px] p-4 flex flex-col gap-3 min-h-[340px]">
             {/* Mockup title bar */}
             <div className="flex items-center justify-between border-b border-[#22242a] pb-2 mb-1">
-              <span className="text-[#f09000] text-[9px] font-bold tracking-[0.14em] uppercase">[LIVE TERMINAL]</span>
+              <span className="text-[#f09000] text-[9px] font-bold tracking-[0.14em] uppercase">[REAL-TIME TERMINAL]</span>
               <span className="text-[#27c47c] text-[9px] tracking-[0.06em]">● CONNECTED</span>
             </div>
 
@@ -65,15 +69,19 @@ export default function LandingPage() {
 
             {/* Signal rows */}
             <div className="flex flex-col gap-1">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-[#27c47c] text-[8px]">●</span>
+                <span className="text-[#444950] text-[8px] tracking-[0.1em] uppercase">Live signals · Updated every 250ms</span>
+              </div>
               {[
-                { label: "WHALE BUY", val: "+2.4σ", color: "#27c47c" },
-                { label: "MOMENTUM", val: "STRONG", color: "#27c47c" },
-                { label: "VOL SPIKE", val: "3.1×", color: "#f09000" },
-                { label: "SPREAD", val: "0.8¢", color: "#e8e8e8" },
+                { label: "WHALE BUY", val: "+2.4σ", color: "#27c47c", accent: "border-l-2 border-l-[#27c47c]" },
+                { label: "MOMENTUM", val: "STRONG", color: "#27c47c", accent: "border-l-2 border-l-[#27c47c]" },
+                { label: "VOL SPIKE", val: "3.1×", color: "#f09000", accent: "border-l-2 border-l-[#f09000]" },
+                { label: "SPREAD", val: "0.8¢", color: "#e8e8e8", accent: "" },
               ].map((s) => (
                 <div
                   key={s.label}
-                  className="flex items-center justify-between bg-[#0d0e11] px-3 py-[5px] border border-[#22242a] rounded-[2px]"
+                  className={`flex items-center justify-between bg-[#0d0e11] px-3 py-[5px] border border-[#22242a] rounded-[2px] ${s.accent}`}
                 >
                   <span className="text-[#666c77] text-[9px] tracking-[0.08em] uppercase">{s.label}</span>
                   <span className="text-[9px] font-bold tracking-[0.06em]" style={{ color: s.color }}>{s.val}</span>
@@ -94,20 +102,23 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Proof Strip */}
+      {/* Edge Signals */}
       <section className="border-b border-[#22242a] bg-[#131518]">
-        <div className="max-w-6xl mx-auto px-6 py-5">
-          <div className="flex flex-wrap items-center gap-x-0 gap-y-3 overflow-x-auto">
+        <div className="max-w-6xl mx-auto px-6 py-6">
+          <p className="text-[#f09000] text-[9px] font-bold tracking-[0.14em] uppercase mb-4">
+            Edge signals include:
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             {[
-              "Sub-100ms WebSocket order book",
-              "Keyboard trading  Y / N / Enter",
-              "Whale + momentum signals",
-              "Built for 5-min BTC markets",
-            ].map((item, i) => (
-              <span key={item} className="flex items-center whitespace-nowrap">
-                {i > 0 && <span className="text-[#22242a] mx-4 text-[11px]">|</span>}
-                <span className="text-[#666c77] text-[11px] tracking-[0.08em] uppercase">{item}</span>
-              </span>
+              { label: "WHALE FLOW",   desc: "Large-order detection across the book" },
+              { label: "MOMENTUM",     desc: "Directional strength, scored live" },
+              { label: "VOL SPIKE",    desc: "Abnormal volatility flagged in real time" },
+              { label: "SPREAD WIDTH", desc: "Liquidity gauge for execution confidence" },
+            ].map((s) => (
+              <div key={s.label} className="border border-[#22242a] px-3 py-2 flex flex-col gap-1">
+                <span className="text-[#e8e8e8] text-[10px] font-bold tracking-[0.1em]">{s.label}</span>
+                <span className="text-[#444950] text-[10px] tracking-[0.04em]">{s.desc}</span>
+              </div>
             ))}
           </div>
         </div>
