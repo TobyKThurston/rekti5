@@ -6,11 +6,13 @@ export function ParallaxSection({
   className = '',
   speed = 0.07,
   immediate = false,
+  entranceOffset = 22,
 }: {
   children: React.ReactNode;
   className?: string;
   speed?: number;
   immediate?: boolean;
+  entranceOffset?: number;
 }) {
   const outerRef = useRef<HTMLDivElement>(null);
   const parallaxRef = useRef<HTMLDivElement>(null);
@@ -52,7 +54,7 @@ export function ParallaxSection({
         <div
           style={{
             opacity: revealed ? 1 : 0,
-            transform: revealed ? 'translateY(0)' : 'translateY(22px)',
+            transform: revealed ? 'translateY(0)' : `translateY(${entranceOffset}px)`,
             transition: 'opacity 0.65s ease, transform 0.65s ease',
           }}
         >

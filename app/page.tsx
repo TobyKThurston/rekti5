@@ -240,22 +240,18 @@ export default function LandingPage() {
       </section>
 
       {/* Final CTA */}
-      <section className="py-24 overflow-hidden">
-        <ParallaxSection speed={0.08}>
-          <div className="max-w-6xl mx-auto px-6 flex flex-col items-center gap-6 text-center">
+      <section className="min-h-screen bg-[#0d0e11] overflow-hidden flex items-center justify-center">
+        <ParallaxSection speed={0.12} entranceOffset={70}>
+          <div className="flex flex-col items-center gap-8 text-center px-6">
             <h2 className="text-[24px] font-bold text-[#e8e8e8] tracking-[0.03em] min-h-[2em] flex items-center">
               <ScrollTypewriter text="Start trading with an edge." />
             </h2>
             <a
               href="/terminal"
               className="w-72 h-14 flex items-center justify-center bg-[#f09000] text-black text-[16px] font-bold rounded-[2px] tracking-[0.08em] hover:bg-[#ffa020] transition-all hover:scale-[1.03]"
-              style={{ boxShadow: '0 0 32px rgba(240,144,0,0.35), 0 0 8px rgba(240,144,0,0.2)' }}
             >
               Launch Terminal →
             </a>
-            <p className="text-[9px] text-[#444950] tracking-[0.1em] uppercase">
-              Non-custodial · Direct CLOB · No sign-up
-            </p>
           </div>
         </ParallaxSection>
       </section>
