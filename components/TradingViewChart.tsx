@@ -163,12 +163,16 @@ export function TradingViewChart({ targetPrice = 64500 }: TradingViewChartProps)
     const unsub = priceEngine.subscribe((price) => {
       const nowMs = Date.now();
       const bucketStart = getBucketStart(nowMs) as Time;
+      const cur = currentBarRef.current;
+      const isNewBucket = !cur || cur.time !== bucketStart;
 
       // ── 1. Validate tick ────────────────────────────────────────────────────
+      // Skip outlier check for new bucket opens — cross-minute moves are
+      // legitimate. Only apply it intra-minute to catch feed glitches.
       const rejection = validateTick({
         price,
         timestampMs: nowMs,
-        prevAcceptedPrice: lastAcceptedPriceRef.current,
+        prevAcceptedPrice: isNewBucket ? null : lastAcceptedPriceRef.current,
         finalizedBuckets: finalizedBucketsRef.current,
         config: CANDLE_CONFIG,
       });
@@ -183,9 +187,6 @@ export function TradingViewChart({ targetPrice = 64500 }: TradingViewChartProps)
 
       // ── 2. Accept tick ──────────────────────────────────────────────────────
       lastAcceptedPriceRef.current = price as number;
-
-      const cur = currentBarRef.current;
-      const isNewBucket = !cur || cur.time !== bucketStart;
 
       if (isNewBucket) {
         // ── 3. Finalize the completed bar ─────────────────────────────────────
