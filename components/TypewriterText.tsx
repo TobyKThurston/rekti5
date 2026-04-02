@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 
-export function TypewriterText({ text, className }: { text: string; className?: string }) {
+export function TypewriterText({ text, className, speed = 60 }: { text: string; className?: string; speed?: number }) {
   const [displayed, setDisplayed] = useState('');
   const [done, setDone] = useState(false);
 
@@ -13,7 +13,7 @@ export function TypewriterText({ text, className }: { text: string; className?: 
       i++;
       setDisplayed(text.slice(0, i));
       if (i >= text.length) { clearInterval(id); setDone(true); }
-    }, 60);
+    }, speed);
     return () => clearInterval(id);
   }, [text]);
 

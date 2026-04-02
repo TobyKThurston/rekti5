@@ -248,10 +248,14 @@ export default function LandingPage() {
             </h2>
             <a
               href="/terminal"
-              className="w-48 h-10 flex items-center justify-center bg-[#f09000] text-black text-[13px] font-bold rounded-[2px] tracking-[0.06em] hover:bg-[#d98000] transition-colors"
+              className="w-72 h-14 flex items-center justify-center bg-[#f09000] text-black text-[16px] font-bold rounded-[2px] tracking-[0.08em] hover:bg-[#ffa020] transition-all hover:scale-[1.03]"
+              style={{ boxShadow: '0 0 32px rgba(240,144,0,0.35), 0 0 8px rgba(240,144,0,0.2)' }}
             >
               Launch Terminal →
             </a>
+            <p className="text-[9px] text-[#444950] tracking-[0.1em] uppercase">
+              Non-custodial · Direct CLOB · No sign-up
+            </p>
           </div>
         </ParallaxSection>
       </section>

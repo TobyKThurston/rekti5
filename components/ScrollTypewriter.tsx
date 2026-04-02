@@ -31,7 +31,7 @@ export function ScrollTypewriter({
   return (
     <span ref={ref}>
       {active ? (
-        <TypewriterText text={text} className={className} />
+        <TypewriterText text={text} className={className} speed={32} />
       ) : (
         <span className={className} style={{ visibility: 'hidden' }}>{text}</span>
       )}
