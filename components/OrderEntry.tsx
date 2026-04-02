@@ -159,11 +159,14 @@ export function OrderEntry({
 
       <div className="mt-2 grid grid-cols-2 gap-1.5">
         <div>
-          <div className="text-[9px] text-[#666c77] mb-0.5">STOP LOSS</div>
+          <div className="text-[9px] text-[#666c77] mb-0.5">
+            STOP LOSS
+            <span className="ml-1 text-[#444] normal-case">sell if price ≤</span>
+          </div>
           <input
             type="number"
             step="0.01" min="0.01" max="0.99"
-            placeholder="—"
+            placeholder="0.00"
             value={stopLoss}
             onChange={e => setStopLoss(e.target.value)}
             className="w-full rounded-[2px] bg-[#1a1c20] px-2 py-1 text-[11px] text-[#e04f4f] outline-none"
@@ -185,11 +188,14 @@ export function OrderEntry({
           </div>
         </div>
         <div>
-          <div className="text-[9px] text-[#666c77] mb-0.5">TAKE PROFIT</div>
+          <div className="text-[9px] text-[#666c77] mb-0.5">
+            TAKE PROFIT
+            <span className="ml-1 text-[#444] normal-case">sell if price ≥</span>
+          </div>
           <input
             type="number"
             step="0.01" min="0.01" max="0.99"
-            placeholder="—"
+            placeholder="0.00"
             value={takeProfit}
             onChange={e => setTakeProfit(e.target.value)}
             className="w-full rounded-[2px] bg-[#1a1c20] px-2 py-1 text-[11px] text-[#27c47c] outline-none"
