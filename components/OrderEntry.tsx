@@ -3,6 +3,7 @@
 interface OrderEntryProps {
   sizePct: number;
   setSizePct: (v: number) => void;
+  walletBalance: number;
   amountValue: string;
   feeEstimate: string;
   upPayout: string;
@@ -23,6 +24,7 @@ interface OrderEntryProps {
 export function OrderEntry({
   sizePct,
   setSizePct,
+  walletBalance,
   amountValue,
   feeEstimate,
   upPayout,
@@ -40,10 +42,11 @@ export function OrderEntry({
   pendingSide,
 }: OrderEntryProps) {
   const SIZE_PRESETS = [
-    { pct: 25,  key: '1' },
-    { pct: 50,  key: '2' },
-    { pct: 75,  key: '3' },
-    { pct: 100, key: '4' },
+    { dollars: 1,  key: '1' },
+    { dollars: 5,  key: '2' },
+    { dollars: 10, key: '3' },
+    { dollars: 25, key: '4' },
+    { dollars: 50, key: '5' },
   ];
 
   const yesArmed = pendingSide === 'yes';
@@ -66,21 +69,25 @@ export function OrderEntry({
         onChange={(e) => setSizePct(Number(e.target.value))}
         className="mb-1.5 w-full accent-[#f09000]"
       />
-      <div className="mb-2 grid grid-cols-4 gap-1">
-        {SIZE_PRESETS.map(({ pct, key }) => (
-          <button
-            key={pct}
-            onClick={() => setSizePct(pct)}
-            className={`rounded-[2px] border px-1 py-1 text-[11px] ${
-              sizePct === pct
-                ? 'border-[#f09000] bg-[#1a1400] text-[#f09000]'
-                : 'border-[#22242a] bg-[#1a1c20] text-[#666c77] hover:border-[#f09000] hover:text-[#f09000]'
-            }`}
-          >
-            {pct}%
-            <span className="ml-0.5 text-[9px] opacity-40">[{key}]</span>
-          </button>
-        ))}
+      <div className="mb-2 grid grid-cols-5 gap-1">
+        {SIZE_PRESETS.map(({ dollars, key }) => {
+          const targetPct = walletBalance > 0 ? Math.min(100, (dollars / walletBalance) * 100) : 0;
+          const active = walletBalance > 0 && Math.abs(sizePct - targetPct) < 0.01;
+          return (
+            <button
+              key={dollars}
+              onClick={() => setSizePct(targetPct)}
+              className={`rounded-[2px] border px-1 py-1 text-[11px] ${
+                active
+                  ? 'border-[#f09000] bg-[#1a1400] text-[#f09000]'
+                  : 'border-[#22242a] bg-[#1a1c20] text-[#666c77] hover:border-[#f09000] hover:text-[#f09000]'
+              }`}
+            >
+              ${dollars}
+              <span className="ml-0.5 text-[9px] opacity-40">[{key}]</span>
+            </button>
+          );
+        })}
       </div>
       <div className="mb-2 grid grid-cols-3 divide-x divide-[#22242a] rounded-[2px] border border-[#22242a] bg-[#1a1c20] text-[10px]">
         <div className="px-1.5 py-1">
@@ -161,6 +168,21 @@ export function OrderEntry({
             onChange={e => setStopLoss(e.target.value)}
             className="w-full rounded-[2px] bg-[#1a1c20] px-2 py-1 text-[11px] text-[#e04f4f] outline-none"
           />
+          <div className="mt-1 grid grid-cols-3 gap-0.5">
+            {[0.10, 0.20, 0.30].map(v => (
+              <button
+                key={v}
+                onClick={() => setStopLoss(String(v))}
+                className={`rounded-[2px] border py-0.5 text-[10px] ${
+                  stopLoss === String(v)
+                    ? 'border-[#e04f4f] bg-[#1a0000] text-[#e04f4f]'
+                    : 'border-[#22242a] bg-[#1a1c20] text-[#666c77] hover:border-[#e04f4f] hover:text-[#e04f4f]'
+                }`}
+              >
+                {v * 100}%
+              </button>
+            ))}
+          </div>
         </div>
         <div>
           <div className="text-[9px] text-[#666c77] mb-0.5">TAKE PROFIT</div>
@@ -172,6 +194,21 @@ export function OrderEntry({
             onChange={e => setTakeProfit(e.target.value)}
             className="w-full rounded-[2px] bg-[#1a1c20] px-2 py-1 text-[11px] text-[#27c47c] outline-none"
           />
+          <div className="mt-1 grid grid-cols-3 gap-0.5">
+            {[0.70, 0.80, 0.90].map(v => (
+              <button
+                key={v}
+                onClick={() => setTakeProfit(String(v))}
+                className={`rounded-[2px] border py-0.5 text-[10px] ${
+                  takeProfit === String(v)
+                    ? 'border-[#27c47c] bg-[#001a0a] text-[#27c47c]'
+                    : 'border-[#22242a] bg-[#1a1c20] text-[#666c77] hover:border-[#27c47c] hover:text-[#27c47c]'
+                }`}
+              >
+                {v * 100}%
+              </button>
+            ))}
+          </div>
         </div>
       </div>
     </section>

@@ -43,6 +43,7 @@ interface KbState {
   positions: Position[];
   closePosition: (p: Position) => void;
   setSizePct: (v: number) => void;
+  walletBalanceUSDC: number;
   pendingSide: 'yes' | 'no' | null;
   setPendingSide: (v: 'yes' | 'no' | null) => void;
 }
@@ -106,10 +107,11 @@ export default function TradingApp() {
           if (target) s.closePosition(target);
           break;
         }
-        case '1': s.setSizePct(25);  break;
-        case '2': s.setSizePct(50);  break;
-        case '3': s.setSizePct(75);  break;
-        case '4': s.setSizePct(100); break;
+        case '1': s.setSizePct(s.walletBalanceUSDC > 0 ? Math.min(100, (1  / s.walletBalanceUSDC) * 100) : 0); break;
+        case '2': s.setSizePct(s.walletBalanceUSDC > 0 ? Math.min(100, (5  / s.walletBalanceUSDC) * 100) : 0); break;
+        case '3': s.setSizePct(s.walletBalanceUSDC > 0 ? Math.min(100, (10 / s.walletBalanceUSDC) * 100) : 0); break;
+        case '4': s.setSizePct(s.walletBalanceUSDC > 0 ? Math.min(100, (25 / s.walletBalanceUSDC) * 100) : 0); break;
+        case '5': s.setSizePct(s.walletBalanceUSDC > 0 ? Math.min(100, (50 / s.walletBalanceUSDC) * 100) : 0); break;
       }
     };
     document.addEventListener('keydown', handler);
@@ -229,7 +231,7 @@ export default function TradingApp() {
     }
   };
 
-  kbStateRef.current = { buyDisabled, buyYes, buyNo, positions, closePosition, setSizePct, pendingSide, setPendingSide };
+  kbStateRef.current = { buyDisabled, buyYes, buyNo, positions, closePosition, setSizePct, walletBalanceUSDC, pendingSide, setPendingSide };
 
   // ── Layout ────────────────────────────────────────────────────────────────────
 
@@ -303,6 +305,7 @@ export default function TradingApp() {
             <OrderEntry
               sizePct={sizePct}
               setSizePct={setSizePct}
+              walletBalance={walletBalanceUSDC}
               amountValue={amountValue}
               feeEstimate={feeEstimate}
               upPayout={upPayout}
