@@ -1,19 +1,10 @@
 import { useEffect, useState } from 'react';
 import { ethers } from 'ethers';
 import { ClobClient } from '@polymarket/clob-client';
-import { BuilderConfig } from '@polymarket/builder-signing-sdk';
 import { MAINNET } from '@/config/networks';
 import type { ToastType, ApiCreds } from '@/types';
 
 type ShowToast = (type: ToastType, msg: string) => void;
-
-const _bKey  = process.env.NEXT_PUBLIC_POLY_BUILDER_KEY;
-const _bSec  = process.env.NEXT_PUBLIC_POLY_BUILDER_SECRET;
-const _bPass = process.env.NEXT_PUBLIC_POLY_BUILDER_PASSPHRASE;
-
-const builderConfig = (_bKey && _bSec && _bPass)
-  ? new BuilderConfig({ localBuilderCreds: { key: _bKey, secret: _bSec, passphrase: _bPass } })
-  : undefined;
 
 export function useWallet(showToast: ShowToast) {
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
@@ -93,8 +84,7 @@ export function useWallet(showToast: ShowToast) {
         0,           // signatureType
         address,     // funderAddress
         undefined,   // geoBlockToken
-        false,       // useServerTime
-        builderConfig as any, // eslint-disable-line @typescript-eslint/no-explicit-any
+        true,        // useServerTime
       );
 
       const usdcContract = new ethers.Contract(
@@ -154,8 +144,7 @@ export function useWallet(showToast: ShowToast) {
         0,           // signatureType
         address,     // funderAddress
         undefined,   // geoBlockToken
-        false,       // useServerTime
-        builderConfig as any, // eslint-disable-line @typescript-eslint/no-explicit-any
+        true,        // useServerTime
       );
 
         const usdcContract = new ethers.Contract(

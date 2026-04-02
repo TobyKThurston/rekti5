@@ -168,14 +168,20 @@ export default function TradingApp() {
     const price = parseFloat(tokenId === market.yesTokenId ? market.yesPrice : market.noPrice);
     const size  = parseFloat(amountValue);
     if (size < 1) { showToast('error', 'Min order size is $1.'); return; }
-    const res = await clobClient.createAndPostOrder(
+    const signedOrder = await clobClient.createOrder(
       { tokenID: tokenId, price, size, side },
       { tickSize: String(market.tickSize) },
-      OrderType.GTC,
     );
-    if (res?.errorMsg) throw new Error(res.errorMsg);
+    const apiCreds = JSON.parse(sessionStorage.getItem('clobApiCreds') ?? '{}');
+    const res = await fetch('/api/place-order', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ signedOrder, orderType: OrderType.GTC, apiCreds }),
+    });
+    const data = await res.json();
+    if (!res.ok || data?.errorMsg) throw new Error(data?.errorMsg ?? 'Order failed');
     setPositions((prev) => [...prev, {
-      id:          res.orderID ?? crypto.randomUUID(),
+      id:          data.orderID ?? crypto.randomUUID(),
       side:        tokenId === market.yesTokenId ? 'YES' : 'NO',
       size,
       entry:       price,
@@ -183,9 +189,9 @@ export default function TradingApp() {
       stopLoss:    stopLoss   ? parseFloat(stopLoss)   : undefined,
       takeProfit:  takeProfit ? parseFloat(takeProfit) : undefined,
       status:      'OPEN_POSITION',
-      orderId:     res.orderID,
+      orderId:     data.orderID,
     }]);
-    showToast('success', `Order placed: ${res.orderID ?? 'n/a'}`);
+    showToast('success', `Order placed: ${data.orderID ?? 'n/a'}`);
   };
 
   const buyYes = async () => {
@@ -214,12 +220,21 @@ export default function TradingApp() {
         } catch {
           const tokenId = position.side === 'YES' ? market!.yesTokenId : market!.noTokenId;
           const size  = position.size;
-          const price = parseFloat(position.currentPrice ?? '0');
-          await clobClient.createAndPostOrder(
+          const price = position.side === 'YES'
+            ? parseFloat(String(market!.bestBid))
+            : parseFloat(String(market!.bestNoBid ?? market!.bestBid));
+          const signedOrder = await clobClient.createOrder(
             { tokenID: tokenId, price, size, side: Side.SELL },
             { tickSize: String(market!.tickSize) },
-            OrderType.GTC,
           );
+          const apiCreds = JSON.parse(sessionStorage.getItem('clobApiCreds') ?? '{}');
+          const res = await fetch('/api/place-order', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ signedOrder, orderType: OrderType.GTC, apiCreds }),
+          });
+          const data = await res.json();
+          if (!res.ok || data?.errorMsg) throw new Error(data?.errorMsg ?? 'Close order failed');
         }
       }
       setPositions((prev) => prev.filter((p) => p.id !== position.id));

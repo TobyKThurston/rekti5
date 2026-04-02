@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { Side, OrderType } from '@polymarket/clob-client';
+import { Side } from '@polymarket/clob-client';
 import type { Market, Position, ToastType } from '@/types';
 
 interface UseTriggerEngineProps {
@@ -58,16 +58,23 @@ export function useTriggerEngine({
         const bestBid = order.side === 'YES'
           ? parseFloat(String(market!.bestBid))
           : parseFloat(String(market!.bestNoBid ?? 0));
-        const aggressivePrice = Math.max(0.01, parseFloat((bestBid - 0.01).toFixed(4)));
+        const tickSize = parseFloat(String(market!.tickSize));
+        const aggressivePrice = Math.max(
+          tickSize,
+          parseFloat((Math.floor((bestBid - tickSize) / tickSize) * tickSize).toFixed(4)),
+        );
 
         if (clobClient) {
-          const exitOrder = await clobClient.createOrder({
-            tokenID: tokenId,
-            price:   aggressivePrice,
-            side:    Side.SELL,
-            size:    order.size,
+          const exitOrder = await clobClient.createOrder(
+            { tokenID: tokenId, price: aggressivePrice, side: Side.SELL, size: order.size },
+            { tickSize: String(market!.tickSize) },
+          );
+          const apiCreds = JSON.parse(sessionStorage.getItem('clobApiCreds') ?? '{}');
+          await fetch('/api/place-order', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ signedOrder: exitOrder, orderType: 'GTC', apiCreds }),
           });
-          await clobClient.postOrder(exitOrder, OrderType.GTC);
         }
         setPositions(prev => prev.map(p =>
           p.id === order.id
