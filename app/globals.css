@@ -70,3 +70,63 @@ body {
   display: block;
   animation: slot-down 220ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
+
+/* Landing page — background grid */
+.bg-grid {
+  background-image:
+    linear-gradient(rgba(34, 36, 42, 0.55) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(34, 36, 42, 0.55) 1px, transparent 1px);
+  background-size: 56px 56px;
+  background-position: -1px -1px;
+}
+
+.mask-radial-fade {
+  -webkit-mask-image: radial-gradient(ellipse 70% 65% at 50% 35%, #000 45%, transparent 85%);
+          mask-image: radial-gradient(ellipse 70% 65% at 50% 35%, #000 45%, transparent 85%);
+}
+
+/* Slow drifting blob glows */
+@keyframes blob-drift-a {
+  0%,100% { transform: translate3d(0, 0, 0) scale(1); }
+  50%     { transform: translate3d(28px, -22px, 0) scale(1.08); }
+}
+@keyframes blob-drift-b {
+  0%,100% { transform: translate3d(0, 0, 0) scale(1); }
+  50%     { transform: translate3d(-30px, 24px, 0) scale(1.05); }
+}
+
+.blob-a { animation: blob-drift-a 14s ease-in-out infinite; }
+.blob-b { animation: blob-drift-b 18s ease-in-out infinite; }
+
+/* Subtle vertical rise-in used for hero content */
+@keyframes rise-in {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.rise-1 { animation: rise-in 0.8s 0.10s cubic-bezier(0.22,1,0.36,1) both; }
+.rise-2 { animation: rise-in 0.8s 0.22s cubic-bezier(0.22,1,0.36,1) both; }
+.rise-3 { animation: rise-in 0.8s 0.34s cubic-bezier(0.22,1,0.36,1) both; }
+.rise-4 { animation: rise-in 0.8s 0.46s cubic-bezier(0.22,1,0.36,1) both; }
+.rise-5 { animation: rise-in 0.8s 0.58s cubic-bezier(0.22,1,0.36,1) both; }
+
+/* Status pill pulse */
+@keyframes dot-pulse {
+  0%,100% { box-shadow: 0 0 0 0 rgba(39,196,124,0.6); }
+  50%     { box-shadow: 0 0 0 6px rgba(39,196,124,0); }
+}
+.dot-pulse { animation: dot-pulse 2.2s ease-out infinite; }
+
+/* Primary CTA shimmer sweep */
+@keyframes shimmer-sweep {
+  0%   { transform: translateX(-120%); }
+  100% { transform: translateX(220%); }
+}
+.shimmer-sweep::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(110deg, transparent 30%, rgba(255,255,255,0.28) 50%, transparent 70%);
+  animation: shimmer-sweep 3.2s ease-in-out infinite;
+  pointer-events: none;
+}
