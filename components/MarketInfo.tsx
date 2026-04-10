@@ -35,11 +35,22 @@ export function MarketInfo({
   return (
     <section className="border-b border-[#22242a] px-3 py-3">
       <div className="mb-2 flex items-center justify-between">
-        <span className="text-[10px] tracking-[0.08em] text-[#666c77]">BTC 5M UP/DOWN</span>
+        <div className="flex items-center gap-2">
+          <span className="relative flex h-1.5 w-1.5">
+            <span className="absolute inline-flex h-full w-full rounded-full bg-[#f09000] dot-pulse" />
+            <span
+              className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[#f09000]"
+              style={{ boxShadow: '0 0 6px #f09000' }}
+            />
+          </span>
+          <span className="text-[10px] tracking-[0.16em] text-[#f09000] font-bold uppercase">
+            BTC 5M · UP/DOWN
+          </span>
+        </div>
         <button
           onClick={autoLoadMarket}
           disabled={marketLoading}
-          className="rounded-[2px] border border-[#22242a] px-2 py-[2px] text-[10px] text-[#666c77] hover:border-[#f09000] hover:text-[#f09000] disabled:opacity-50"
+          className="rounded-full border border-[#22242a] px-2.5 py-[2px] text-[10px] text-[#666c77] hover:border-[#f09000] hover:text-[#f09000] disabled:opacity-50 transition-colors"
         >
           {marketLoading ? '…' : '↻'}
         </button>

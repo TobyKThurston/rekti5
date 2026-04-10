@@ -252,7 +252,35 @@ export default function TradingApp() {
 
   return (
     <ErrorBoundary>
-    <div className="h-screen overflow-hidden bg-[#0d0e11] text-[#e8e8e8]">
+    <div className="relative h-screen overflow-hidden bg-[#0d0e11] text-[#e8e8e8]">
+      {/* Ambient background — subtle radial glows behind the cockpit */}
+      <div aria-hidden className="pointer-events-none fixed inset-0 -z-10">
+        <div
+          className="absolute"
+          style={{
+            top: '-10%',
+            left: '-5%',
+            width: '720px',
+            height: '720px',
+            background:
+              'radial-gradient(circle, rgba(240,144,0,0.07) 0%, rgba(240,144,0,0.02) 35%, transparent 70%)',
+            filter: 'blur(60px)',
+          }}
+        />
+        <div
+          className="absolute"
+          style={{
+            bottom: '-10%',
+            right: '-5%',
+            width: '640px',
+            height: '640px',
+            background:
+              'radial-gradient(circle, rgba(39,196,124,0.05) 0%, rgba(39,196,124,0.02) 35%, transparent 70%)',
+            filter: 'blur(60px)',
+          }}
+        />
+      </div>
+
       <Toast toast={toast} />
 
       <Header
@@ -269,7 +297,7 @@ export default function TradingApp() {
           <section className="h-[45%] shrink-0 flex flex-col min-[1100px]:h-full">
 
             {/* Chart + signal stack + empty gap */}
-            <div className="flex-1 min-h-0 flex bg-[#0d0e11]">
+            <div className="flex-1 min-h-0 flex bg-transparent">
               {/* Chart column */}
               <div className="flex flex-col flex-1 min-w-0 h-full">
                 <div className="flex-1 min-h-0">
@@ -277,7 +305,13 @@ export default function TradingApp() {
                     ? <TradingViewChart targetPrice={strikePrice ?? 64500} />
                     : <div className="h-full w-full bg-[#0d0e11]" />}
                 </div>
-                <div className="shrink-0 h-[26%] flex border-t border-[#22242a] bg-[#131518]">
+                <div
+                  className="shrink-0 h-[26%] flex border-t border-[#22242a] backdrop-blur-sm"
+                  style={{
+                    background:
+                      'linear-gradient(180deg, rgba(19,21,24,0.85) 0%, rgba(15,17,20,0.85) 100%)',
+                  }}
+                >
                   <MarketMicrostructure
                     market={market}
                     recentTrades={recentTrades}
@@ -287,13 +321,25 @@ export default function TradingApp() {
               </div>
 
               {/* Signal Stack */}
-              <div className="w-[160px] shrink-0 h-full border-l border-[#22242a] bg-[#131518] overflow-y-auto">
+              <div
+                className="w-[160px] shrink-0 h-full border-l border-[#22242a] overflow-y-auto backdrop-blur-sm"
+                style={{
+                  background:
+                    'linear-gradient(180deg, rgba(19,21,24,0.85) 0%, rgba(15,17,20,0.85) 100%)',
+                }}
+              >
                 <SignalStack strikePrice={strikePrice} recentResults={marketHistory} whaleTrades={whaleTrades} />
               </div>
             </div>
 
             {/* Positions */}
-            <div className="hidden min-[1100px]:block h-[22%] shrink-0 overflow-y-auto border-t border-[#22242a] bg-[#131518]">
+            <div
+              className="hidden min-[1100px]:block h-[22%] shrink-0 overflow-y-auto border-t border-[#22242a] backdrop-blur-sm"
+              style={{
+                background:
+                  'linear-gradient(180deg, rgba(19,21,24,0.85) 0%, rgba(15,17,20,0.85) 100%)',
+              }}
+            >
               <PositionsTable
                 positions={positions}
                 market={market}
@@ -304,7 +350,11 @@ export default function TradingApp() {
           </section>
 
           <aside
-            className="flex-1 min-h-0 overflow-y-auto border-t border-[#22242a] bg-[#131518] min-[1100px]:h-full min-[1100px]:flex-none min-[1100px]:border-t-0 min-[1100px]:border-l min-[1100px]:border-[#22242a]"
+            className="flex-1 min-h-0 overflow-y-auto border-t border-[#22242a] backdrop-blur-sm min-[1100px]:h-full min-[1100px]:flex-none min-[1100px]:border-t-0 min-[1100px]:border-l min-[1100px]:border-[#22242a]"
+            style={{
+              background:
+                'linear-gradient(180deg, rgba(19,21,24,0.92) 0%, rgba(13,14,17,0.92) 100%)',
+            }}
           >
             <MarketInfo
               market={market}

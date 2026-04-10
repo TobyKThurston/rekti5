@@ -54,12 +54,17 @@ export function OrderEntry({
 
   return (
     <section className="border-b border-[#22242a] px-3 py-3">
-      <div className="mb-1 text-[10px] text-[#666c77]">Amount ($)</div>
+      <div className="mb-1.5 flex items-center gap-1.5">
+        <span className="h-px flex-1 bg-gradient-to-r from-[#f09000]/40 to-transparent" />
+        <span className="text-[9px] tracking-[0.16em] text-[#666c77] uppercase font-semibold">Order</span>
+        <span className="h-px flex-1 bg-gradient-to-l from-[#f09000]/10 to-transparent" />
+      </div>
+      <div className="mb-1 text-[10px] text-[#666c77] tracking-[0.08em] uppercase">Amount ($)</div>
       <input
         type="number"
         value={amountValue}
         readOnly
-        className="mb-1.5 w-full rounded-[2px] border border-[#22242a] bg-[#1a1c20] px-1.5 py-1 text-[12px] text-[#e8e8e8] outline-none focus:border-[#f09000]"
+        className="mb-1.5 w-full rounded-[3px] border border-[#22242a] bg-[#1a1c20]/80 px-2 py-1.5 text-[13px] font-bold text-[#e8e8e8] tabular-nums outline-none focus:border-[#f09000]"
       />
       <input
         type="range"
@@ -130,30 +135,38 @@ export function OrderEntry({
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-1">
+      <div className="grid grid-cols-1 gap-1.5">
         <button
           onClick={buyYes}
           disabled={buyDisabled}
-          className={`h-10 w-full rounded-[2px] text-[12px] font-bold text-[#001a0a] hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40 transition-all ${
-            yesArmed
-              ? 'bg-[#27c47c] ring-2 ring-[#27c47c] ring-offset-1 ring-offset-[#131518]'
-              : 'bg-[#27c47c]'
+          className={`relative h-11 w-full rounded-[4px] text-[12px] font-bold text-[#001a0a] tracking-[0.08em] uppercase overflow-hidden transition-all disabled:cursor-not-allowed disabled:opacity-40 hover:brightness-110 ${
+            yesArmed ? 'ring-2 ring-[#27c47c] ring-offset-1 ring-offset-[#131518] scale-[1.01]' : ''
           }`}
+          style={{
+            background:
+              'linear-gradient(180deg, #34d98a 0%, #27c47c 45%, #1ea662 100%)',
+            boxShadow:
+              '0 6px 18px -6px rgba(39,196,124,0.55), 0 2px 6px rgba(39,196,124,0.3), inset 0 1px 0 rgba(255,255,255,0.35), inset 0 -1px 0 rgba(0,0,0,0.22)',
+          }}
         >
-          <span>{buyYesLoading ? 'PLACING…' : 'BUY YES'}</span>
-          {!buyYesLoading && <span className="ml-1.5 text-[10px] opacity-50">[Y]</span>}
+          <span className="relative">{buyYesLoading ? 'PLACING…' : 'BUY YES'}</span>
+          {!buyYesLoading && <span className="relative ml-1.5 text-[10px] opacity-60">[Y]</span>}
         </button>
         <button
           onClick={buyNo}
           disabled={buyDisabled}
-          className={`h-10 w-full rounded-[2px] text-[12px] font-bold text-[#1a0000] hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40 transition-all ${
-            noArmed
-              ? 'bg-[#e04f4f] ring-2 ring-[#e04f4f] ring-offset-1 ring-offset-[#131518]'
-              : 'bg-[#e04f4f]'
+          className={`relative h-11 w-full rounded-[4px] text-[12px] font-bold text-[#1a0000] tracking-[0.08em] uppercase overflow-hidden transition-all disabled:cursor-not-allowed disabled:opacity-40 hover:brightness-110 ${
+            noArmed ? 'ring-2 ring-[#e04f4f] ring-offset-1 ring-offset-[#131518] scale-[1.01]' : ''
           }`}
+          style={{
+            background:
+              'linear-gradient(180deg, #f06060 0%, #e04f4f 45%, #c93e3e 100%)',
+            boxShadow:
+              '0 6px 18px -6px rgba(224,79,79,0.55), 0 2px 6px rgba(224,79,79,0.3), inset 0 1px 0 rgba(255,255,255,0.32), inset 0 -1px 0 rgba(0,0,0,0.25)',
+          }}
         >
-          <span>{buyNoLoading ? 'PLACING…' : 'BUY NO'}</span>
-          {!buyNoLoading && <span className="ml-1.5 text-[10px] opacity-50">[N]</span>}
+          <span className="relative">{buyNoLoading ? 'PLACING…' : 'BUY NO'}</span>
+          {!buyNoLoading && <span className="relative ml-1.5 text-[10px] opacity-60">[N]</span>}
         </button>
       </div>
 
