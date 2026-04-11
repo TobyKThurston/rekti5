@@ -72,14 +72,12 @@ export default function LandingPage() {
             </div>
 
             {/* Headline */}
-            <h1 className="rise-2 text-[28px] sm:text-[32px] lg:text-[36px] font-bold leading-[1.15] tracking-[0.015em] text-[#e8e8e8]">
-              Trade BTC 5-min faster than{" "}
-              <span className="relative inline-block">
-                <TypewriterText
-                  text="the market reprices."
-                  className="bg-gradient-to-r from-[#ffa020] via-[#f09000] to-[#d98000] bg-clip-text text-transparent"
-                />
-              </span>
+            <h1 className="rise-2 text-[26px] sm:text-[30px] lg:text-[32px] font-bold leading-[1.15] tracking-[0.015em] text-[#e8e8e8]">
+              Trade BTC 5-min faster than{' '}
+              <TypewriterText
+                text="the market reprices."
+                className="bg-gradient-to-r from-[#ffa020] via-[#f09000] to-[#d98000] bg-clip-text text-transparent"
+              />
             </h1>
 
             {/* Sub */}
