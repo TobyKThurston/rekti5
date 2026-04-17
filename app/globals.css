@@ -26,7 +26,6 @@ body {
   line-height: 1.15;
 }
 
-/* Thin terminal-style scrollbars */
 * {
   scrollbar-width: thin;
   scrollbar-color: #22242a #0d0e11;
@@ -50,7 +49,6 @@ body {
   background: #3a3d45;
 }
 
-/* Paper-clock / slot-machine digit scroll */
 @keyframes slot-up {
   from { transform: translateY(0); }
   to   { transform: translateY(-50%); }
@@ -71,7 +69,6 @@ body {
   animation: slot-down 220ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 
-/* Landing page — background grid */
 .bg-grid {
   background-image:
     linear-gradient(rgba(34, 36, 42, 0.55) 1px, transparent 1px),
@@ -85,7 +82,6 @@ body {
           mask-image: radial-gradient(ellipse 70% 65% at 50% 35%, #000 45%, transparent 85%);
 }
 
-/* Slow drifting blob glows */
 @keyframes blob-drift-a {
   0%,100% { transform: translate3d(0, 0, 0) scale(1); }
   50%     { transform: translate3d(28px, -22px, 0) scale(1.08); }
@@ -98,7 +94,6 @@ body {
 .blob-a { animation: blob-drift-a 14s ease-in-out infinite; }
 .blob-b { animation: blob-drift-b 18s ease-in-out infinite; }
 
-/* Subtle vertical rise-in used for hero content */
 @keyframes rise-in {
   from { opacity: 0; transform: translateY(14px); }
   to   { opacity: 1; transform: translateY(0); }
@@ -110,14 +105,24 @@ body {
 .rise-4 { animation: rise-in 0.8s 0.46s cubic-bezier(0.22,1,0.36,1) both; }
 .rise-5 { animation: rise-in 0.8s 0.58s cubic-bezier(0.22,1,0.36,1) both; }
 
-/* Status pill pulse */
 @keyframes dot-pulse {
   0%,100% { box-shadow: 0 0 0 0 rgba(39,196,124,0.6); }
   50%     { box-shadow: 0 0 0 6px rgba(39,196,124,0); }
 }
 .dot-pulse { animation: dot-pulse 2.2s ease-out infinite; }
 
-/* Primary CTA shimmer sweep */
+@keyframes tw-blink {
+  0%, 49%  { opacity: 1; }
+  50%, 99% { opacity: 0; }
+  100%     { opacity: 1; }
+}
+.tw-cursor {
+  display: inline-block;
+  margin-left: 2px;
+  transform: translateY(-1px);
+  animation: tw-blink 1s steps(1, end) infinite;
+}
+
 @keyframes shimmer-sweep {
   0%   { transform: translateX(-120%); }
   100% { transform: translateX(220%); }

@@ -37,10 +37,10 @@ export function useTriggerEngine({
         ? parseFloat(String(market.bestBid))
         : parseFloat(String(market.bestNoBid ?? 0));
 
-      let triggerType: 'STOP' | 'TAKE_PROFIT' | null = null;
-      if (order.stopLoss   && currentBid <= order.stopLoss)   triggerType = 'STOP';
-      if (order.takeProfit && currentBid >= order.takeProfit) triggerType = 'TAKE_PROFIT';
-      if (!triggerType) continue;
+      const hit =
+        (order.stopLoss   != null && currentBid <= order.stopLoss) ||
+        (order.takeProfit != null && currentBid >= order.takeProfit);
+      if (!hit) continue;
 
       executingRef.current.add(order.id);
       setPositions(prev => prev.map(p =>
@@ -49,12 +49,11 @@ export function useTriggerEngine({
           : p
       ));
 
-      triggerExit(order, triggerType);
+      triggerExit(order);
     }
 
-    async function triggerExit(order: Position, type: 'STOP' | 'TAKE_PROFIT') {
+    async function triggerExit(order: Position) {
       try {
-        const tokenId = order.side === 'YES' ? market!.yesTokenId : market!.noTokenId;
         const bestBid = order.side === 'YES'
           ? parseFloat(String(market!.bestBid))
           : parseFloat(String(market!.bestNoBid ?? 0));
@@ -66,7 +65,7 @@ export function useTriggerEngine({
 
         if (clobClient) {
           const exitOrder = await clobClient.createOrder(
-            { tokenID: tokenId, price: aggressivePrice, side: Side.SELL, size: order.size },
+            { tokenID: order.tokenId, price: aggressivePrice, side: Side.SELL, size: order.size },
             { tickSize: String(market!.tickSize) },
           );
           const apiCreds = JSON.parse(sessionStorage.getItem('clobApiCreds') ?? '{}');
@@ -81,8 +80,6 @@ export function useTriggerEngine({
             ? { ...p, status: 'FILLED' as const, stopLoss: undefined, takeProfit: undefined }
             : p
         ));
-
-        console.log(`[trigger] ${type} fired for ${order.id} at ${aggressivePrice}`);
       } catch (e) {
         console.error('[trigger] exit failed:', e);
         showToast('error', 'SL/TP exit failed — position still open');

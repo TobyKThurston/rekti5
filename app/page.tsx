@@ -7,17 +7,12 @@ export default function LandingPage() {
   return (
     <div className="relative min-h-screen bg-[#0d0e11] font-mono text-[#e8e8e8] overflow-x-hidden">
 
-      {/* Floating glass navigation */}
       <FloatingNav />
 
-      {/* ─────────── HERO ─────────── */}
       <section className="relative min-h-screen flex items-center border-b border-[#22242a] pt-28 pb-20">
-        {/* Animated background: grid + drifting glows */}
         <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
-          {/* Dot grid */}
           <div className="absolute inset-0 bg-grid mask-radial-fade opacity-[0.65]" />
 
-          {/* Orange glow blob */}
           <div
             className="absolute blob-a"
             style={{
@@ -30,7 +25,6 @@ export default function LandingPage() {
               filter: 'blur(40px)',
             }}
           />
-          {/* Green glow blob */}
           <div
             className="absolute blob-b"
             style={{
@@ -43,7 +37,6 @@ export default function LandingPage() {
               filter: 'blur(48px)',
             }}
           />
-          {/* Vertical scanline gradient */}
           <div
             className="absolute inset-x-0 top-0 h-[60vh]"
             style={{
@@ -54,9 +47,7 @@ export default function LandingPage() {
         </div>
 
         <div className="relative max-w-6xl mx-auto px-6 w-full grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
-          {/* ─── Left: copy ─── */}
           <div className="flex flex-col gap-6">
-            {/* Live status pill */}
             <div className="rise-1 inline-flex items-center gap-2 self-start px-3 h-7 rounded-full border border-[#22242a] bg-[#131518]/80 backdrop-blur-sm">
               <span className="relative flex h-1.5 w-1.5">
                 <span className="absolute inline-flex h-full w-full rounded-full bg-[#27c47c] dot-pulse" />
@@ -71,23 +62,28 @@ export default function LandingPage() {
               </span>
             </div>
 
-            {/* Headline */}
-            <h1 className="rise-2 text-[26px] sm:text-[30px] lg:text-[32px] font-bold leading-[1.15] tracking-[0.015em] text-[#e8e8e8]">
-              Trade BTC 5-min faster than{' '}
-              <TypewriterText
-                text="the market reprices."
-                className="bg-gradient-to-r from-[#ffa020] via-[#f09000] to-[#d98000] bg-clip-text text-transparent"
-              />
+            <h1 className="rise-2 text-[28px] sm:text-[34px] lg:text-[38px] font-bold leading-[1.18] tracking-[0.01em] text-[#e8e8e8]">
+              <span className="block">Trade BTC 5-min</span>
+              <span className="block">
+                before{' '}
+                <TypewriterText
+                  text={[
+                    'the market reprices.',
+                    'the whales move.',
+                    'momentum flips.',
+                    'the window closes.',
+                  ]}
+                  className="bg-gradient-to-r from-[#ffa020] via-[#f09000] to-[#d98000] bg-clip-text text-transparent"
+                />
+              </span>
             </h1>
 
-            {/* Sub */}
             <p className="rise-3 text-[14px] sm:text-[15px] text-[#8a919c] leading-relaxed tracking-[0.02em] max-w-[520px]">
-              Each 5-minute BTC window opens and closes fast. Whale flow detection and
-              momentum scoring surface mispricing before it closes — sub-100ms CLOB
-              execution means you&apos;re in before the price corrects.
+              Every BTC 5-min window opens and closes fast. Whale flow and momentum
+              signals surface the edge; sub-100ms CLOB execution gets you in before
+              the price corrects.
             </p>
 
-            {/* CTAs */}
             <div className="rise-4 flex flex-col sm:flex-row items-stretch sm:items-center gap-3 mt-2">
               <a
                 href="/terminal"
@@ -111,7 +107,6 @@ export default function LandingPage() {
               </a>
             </div>
 
-            {/* Stat strip */}
             <div className="rise-5 grid grid-cols-3 gap-3 mt-6 max-w-[520px]">
               {[
                 { k: '~87ms', v: 'AVG EXEC' },
@@ -133,10 +128,8 @@ export default function LandingPage() {
             </div>
           </div>
 
-          {/* ─── Right: terminal mockup ─── */}
           <ParallaxSection speed={0.1} immediate>
             <div className="relative">
-              {/* Glow backdrop */}
               <div
                 aria-hidden
                 className="absolute -inset-6 -z-10 rounded-[12px] opacity-70"
@@ -157,7 +150,6 @@ export default function LandingPage() {
                     '0 30px 60px -20px rgba(0,0,0,0.8), 0 0 0 1px rgba(240,144,0,0.05), inset 0 1px 0 rgba(255,255,255,0.03)',
                 }}
               >
-                {/* Mockup title bar */}
                 <div className="flex items-center justify-between border-b border-[#22242a] pb-2 mb-1">
                   <div className="flex items-center gap-2">
                     <div className="flex gap-1">
@@ -178,7 +170,6 @@ export default function LandingPage() {
                   </span>
                 </div>
 
-                {/* Price display area */}
                 <div className="bg-[#0d0e11] border border-[#22242a] rounded-[2px] p-3 flex items-center justify-between">
                   <div>
                     <p className="text-[#444950] text-[8px] tracking-[0.1em] uppercase mb-1">BTC / 5M</p>
@@ -190,7 +181,6 @@ export default function LandingPage() {
                   </div>
                 </div>
 
-                {/* Signal rows */}
                 <div className="flex flex-col gap-1">
                   <div className="flex items-center gap-2 mb-1">
                     <span className="text-[#27c47c] text-[8px]">●</span>
@@ -212,7 +202,6 @@ export default function LandingPage() {
                   ))}
                 </div>
 
-                {/* Trade buttons mockup */}
                 <div className="flex gap-2 mt-auto">
                   <div className="flex-1 h-9 flex items-center justify-center bg-[#0d1a0f] border border-[#27c47c] rounded-[2px] text-[#27c47c] text-[10px] font-bold tracking-[0.1em] shadow-[inset_0_0_12px_rgba(39,196,124,0.08)]">
                     Y — YES
@@ -227,7 +216,6 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ─────────── Edge Signals ─────────── */}
       <section id="signals" className="border-b border-[#22242a] bg-[#0f1114] overflow-hidden">
         <ParallaxSection speed={0.07}>
           <div className="max-w-6xl mx-auto px-6 py-10">
@@ -254,7 +242,6 @@ export default function LandingPage() {
         </ParallaxSection>
       </section>
 
-      {/* ─────────── Product ─────────── */}
       <section id="product" className="py-24 border-b border-[#22242a] overflow-hidden">
         <ParallaxSection speed={0.08}>
           <div className="max-w-6xl mx-auto px-6">
@@ -312,7 +299,6 @@ export default function LandingPage() {
         </ParallaxSection>
       </section>
 
-      {/* ─────────── How It Works ─────────── */}
       <section id="how" className="py-24 border-b border-[#22242a] overflow-hidden">
         <ParallaxSection speed={0.08}>
           <div className="max-w-6xl mx-auto px-6">
@@ -356,7 +342,6 @@ export default function LandingPage() {
         </ParallaxSection>
       </section>
 
-      {/* ─────────── Trust Strip ─────────── */}
       <section className="border-b border-[#22242a] bg-[#0f1114] overflow-hidden">
         <ParallaxSection speed={0.05}>
           <div className="max-w-6xl mx-auto px-6 py-6">
@@ -376,9 +361,7 @@ export default function LandingPage() {
         </ParallaxSection>
       </section>
 
-      {/* ─────────── Final CTA ─────────── */}
       <section className="relative min-h-screen bg-[#0d0e11] overflow-hidden flex items-center justify-center">
-        {/* Ambient glow */}
         <div
           aria-hidden
           className="pointer-events-none absolute inset-0"
@@ -410,7 +393,6 @@ export default function LandingPage() {
         </ParallaxSection>
       </section>
 
-      {/* ─────────── Footer ─────────── */}
       <footer className="border-t border-[#22242a] bg-[#0f1114]">
         <div className="max-w-6xl mx-auto px-6 py-5 flex items-center justify-between">
           <a href="/" className="text-[#f09000] text-[11px] font-bold tracking-[0.18em]">REKTI5</a>

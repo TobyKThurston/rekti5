@@ -23,8 +23,6 @@ import { SignalStack }           from '@/components/SignalStack';
 
 import type { Position, ToastState } from '@/types';
 
-// ── Toast helper ──────────────────────────────────────────────────────────────
-
 function useToast() {
   const [toast, setToast] = useState<ToastState | null>(null);
   const showToast = (type: ToastState['type'], msg: string) => {
@@ -33,8 +31,6 @@ function useToast() {
   };
   return { toast, showToast };
 }
-
-// ── Keyboard state ref shape ──────────────────────────────────────────────────
 
 interface KbState {
   buyDisabled: boolean;
@@ -47,8 +43,6 @@ interface KbState {
   pendingSide: 'yes' | 'no' | null;
   setPendingSide: (v: 'yes' | 'no' | null) => void;
 }
-
-// ── Root component ─────────────────────────────────────────────────────────────
 
 export default function TradingApp() {
   const { toast, showToast } = useToast();
@@ -72,8 +66,6 @@ export default function TradingApp() {
 
   const strikePrice = useStrikePrice();
   const marketHistory = useMarketHistory(market?.yesTokenId);
-
-  // ── Keyboard shortcuts ────────────────────────────────────────────────────────
 
   const [chartMounted, setChartMounted] = useState(false);
   const [pendingSide, setPendingSide] = useState<'yes' | 'no' | null>(null);
@@ -118,7 +110,6 @@ export default function TradingApp() {
     return () => document.removeEventListener('keydown', handler);
   }, []);
 
-  // Auto-reload market at countdown zero
   useEffect(() => {
     if (countdown === 0 && marketEndDate) {
       const t = setTimeout(autoLoadMarket, 4000);
@@ -127,8 +118,6 @@ export default function TradingApp() {
   }, [countdown, marketEndDate]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const { recentTrades, whaleTrades } = useWebSocket({ market, setMarket });
-
-  // ── Order state ──────────────────────────────────────────────────────────────
 
   const [sizePct, setSizePct]       = useState(50);
   const [positions, setPositions]   = useState<Position[]>([]);
@@ -143,8 +132,6 @@ export default function TradingApp() {
 
   useTriggerEngine({ market, positionsRef, setPositions, clobClient, countdown, showToast });
 
-  // ── Derived values ────────────────────────────────────────────────────────────
-
   const walletBalanceUSDC = walletBalance != null ? parseFloat(walletBalance) : 0;
   const amountValue = useMemo(() => ((walletBalanceUSDC * sizePct) / 100).toFixed(2), [walletBalanceUSDC, sizePct]);
   const feeEstimate = useMemo(() => ((walletBalanceUSDC * sizePct) / 100 * 0.002).toFixed(2), [walletBalanceUSDC, sizePct]);
@@ -158,8 +145,6 @@ export default function TradingApp() {
   }, [amountValue, market]);
 
   const buyDisabled = !walletAddress || !market || geoBlocked || buyYesLoading || buyNoLoading || wrongNetwork;
-
-  // ── Handlers ──────────────────────────────────────────────────────────────────
 
   const placeOrder = async (side: typeof Side.BUY, tokenId: string) => {
     if (!clobClient) { showToast('error', 'Connect wallet first.'); return; }
@@ -180,14 +165,18 @@ export default function TradingApp() {
     });
     const data = await res.json();
     if (!res.ok || data?.errorMsg) throw new Error(data?.errorMsg ?? 'Order failed');
+    const slPct = stopLoss   ? parseFloat(stopLoss)   : NaN;
+    const tpPct = takeProfit ? parseFloat(takeProfit) : NaN;
+    const slAbs = Number.isFinite(slPct) ? Math.max(0.01, Math.min(0.99, price * (1 - slPct / 100))) : undefined;
+    const tpAbs = Number.isFinite(tpPct) ? Math.max(0.01, Math.min(0.99, price * (1 + tpPct / 100))) : undefined;
     setPositions((prev) => [...prev, {
       id:          data.orderID ?? crypto.randomUUID(),
       side:        tokenId === market.yesTokenId ? 'YES' : 'NO',
       size,
       entry:       price,
       tokenId,
-      stopLoss:    stopLoss   ? parseFloat(stopLoss)   : undefined,
-      takeProfit:  takeProfit ? parseFloat(takeProfit) : undefined,
+      stopLoss:    slAbs,
+      takeProfit:  tpAbs,
       status:      'OPEN_POSITION',
       orderId:     data.orderID,
     }]);
@@ -218,13 +207,12 @@ export default function TradingApp() {
         try {
           await clobClient.cancelOrder({ orderID: position.orderId });
         } catch {
-          const tokenId = position.side === 'YES' ? market!.yesTokenId : market!.noTokenId;
           const size  = position.size;
           const price = position.side === 'YES'
             ? parseFloat(String(market!.bestBid))
             : parseFloat(String(market!.bestNoBid ?? market!.bestBid));
           const signedOrder = await clobClient.createOrder(
-            { tokenID: tokenId, price, size, side: Side.SELL },
+            { tokenID: position.tokenId, price, size, side: Side.SELL },
             { tickSize: String(market!.tickSize) },
           );
           const apiCreds = JSON.parse(sessionStorage.getItem('clobApiCreds') ?? '{}');
@@ -248,39 +236,9 @@ export default function TradingApp() {
 
   kbStateRef.current = { buyDisabled, buyYes, buyNo, positions, closePosition, setSizePct, walletBalanceUSDC, pendingSide, setPendingSide };
 
-  // ── Layout ────────────────────────────────────────────────────────────────────
-
   return (
     <ErrorBoundary>
     <div className="relative h-screen overflow-hidden bg-[#0d0e11] text-[#e8e8e8]">
-      {/* Ambient background — subtle radial glows behind the cockpit */}
-      <div aria-hidden className="pointer-events-none fixed inset-0 -z-10">
-        <div
-          className="absolute"
-          style={{
-            top: '-10%',
-            left: '-5%',
-            width: '720px',
-            height: '720px',
-            background:
-              'radial-gradient(circle, rgba(240,144,0,0.07) 0%, rgba(240,144,0,0.02) 35%, transparent 70%)',
-            filter: 'blur(60px)',
-          }}
-        />
-        <div
-          className="absolute"
-          style={{
-            bottom: '-10%',
-            right: '-5%',
-            width: '640px',
-            height: '640px',
-            background:
-              'radial-gradient(circle, rgba(39,196,124,0.05) 0%, rgba(39,196,124,0.02) 35%, transparent 70%)',
-            filter: 'blur(60px)',
-          }}
-        />
-      </div>
-
       <Toast toast={toast} />
 
       <Header
@@ -296,22 +254,14 @@ export default function TradingApp() {
 
           <section className="h-[45%] shrink-0 flex flex-col min-[1100px]:h-full">
 
-            {/* Chart + signal stack + empty gap */}
             <div className="flex-1 min-h-0 flex bg-transparent">
-              {/* Chart column */}
               <div className="flex flex-col flex-1 min-w-0 h-full">
                 <div className="flex-1 min-h-0">
                   {chartMounted
                     ? <TradingViewChart targetPrice={strikePrice ?? 64500} />
                     : <div className="h-full w-full bg-[#0d0e11]" />}
                 </div>
-                <div
-                  className="shrink-0 h-[26%] flex border-t border-[#22242a] backdrop-blur-sm"
-                  style={{
-                    background:
-                      'linear-gradient(180deg, rgba(19,21,24,0.85) 0%, rgba(15,17,20,0.85) 100%)',
-                  }}
-                >
+                <div className="shrink-0 h-[26%] flex border-t border-[#22242a] bg-[#131518]">
                   <MarketMicrostructure
                     market={market}
                     recentTrades={recentTrades}
@@ -320,26 +270,12 @@ export default function TradingApp() {
                 </div>
               </div>
 
-              {/* Signal Stack */}
-              <div
-                className="w-[160px] shrink-0 h-full border-l border-[#22242a] overflow-y-auto backdrop-blur-sm"
-                style={{
-                  background:
-                    'linear-gradient(180deg, rgba(19,21,24,0.85) 0%, rgba(15,17,20,0.85) 100%)',
-                }}
-              >
+              <div className="w-[160px] shrink-0 h-full border-l border-[#22242a] overflow-y-auto bg-[#131518]">
                 <SignalStack strikePrice={strikePrice} recentResults={marketHistory} whaleTrades={whaleTrades} />
               </div>
             </div>
 
-            {/* Positions */}
-            <div
-              className="hidden min-[1100px]:block h-[22%] shrink-0 overflow-y-auto border-t border-[#22242a] backdrop-blur-sm"
-              style={{
-                background:
-                  'linear-gradient(180deg, rgba(19,21,24,0.85) 0%, rgba(15,17,20,0.85) 100%)',
-              }}
-            >
+            <div className="hidden min-[1100px]:block h-[22%] shrink-0 overflow-y-auto border-t border-[#22242a] bg-[#131518]">
               <PositionsTable
                 positions={positions}
                 market={market}
@@ -349,13 +285,7 @@ export default function TradingApp() {
             </div>
           </section>
 
-          <aside
-            className="flex-1 min-h-0 overflow-y-auto border-t border-[#22242a] backdrop-blur-sm min-[1100px]:h-full min-[1100px]:flex-none min-[1100px]:border-t-0 min-[1100px]:border-l min-[1100px]:border-[#22242a]"
-            style={{
-              background:
-                'linear-gradient(180deg, rgba(19,21,24,0.92) 0%, rgba(13,14,17,0.92) 100%)',
-            }}
-          >
+          <aside className="flex-1 min-h-0 overflow-y-auto border-t border-[#22242a] bg-[#131518] min-[1100px]:h-full min-[1100px]:flex-none min-[1100px]:border-t-0 min-[1100px]:border-l min-[1100px]:border-[#22242a]">
             <MarketInfo
               market={market}
               marketLoading={marketLoading}

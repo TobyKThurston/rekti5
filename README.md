@@ -1,103 +1,98 @@
 # Rekti5
 
-A low-latency trading cockpit for Polymarket's BTC 5-minute binary prediction markets. Built for speed — keyboard-driven order entry, sub-100ms order book updates, and automatic stop-loss/take-profit execution.
-
----
+A keyboard-driven trading terminal for Polymarket's BTC 5-minute binary prediction markets. It connects directly to Polymarket's order book, streams live BTC prices, and runs an automated trigger engine for stop-loss and take-profit exits.
 
 ## What it does
 
-Rekti5 lets you trade YES/NO outcomes on whether Bitcoin's price will be higher or lower at the close of each 5-minute window. It connects directly to Polymarket's Central Limit Order Book (CLOB) for real-time market data and order execution, cross-references Chainlink and Kraken for the opening "Price to Beat", and runs an automated trigger engine that fires SL/TP orders without you touching the keyboard.
+Every 5 minutes, Polymarket opens a new binary market on whether Bitcoin will close higher or lower than its opening price. Rekti5 is a purpose-built UI for trading these markets. You connect a wallet, pick a side, and the app handles order signing, submission, and automated exits.
 
----
+The core loop is built around three concerns: getting price data in as fast as possible, executing orders with minimal friction, and making sure triggers fire reliably inside a 5-minute window.
 
 ## Features
 
-- **Real-time order book** — WebSocket feed from Polymarket CLOB with bid/ask spreads updating sub-100ms
-- **Live BTC/USD oracle** — Kraken WebSocket ticker with automatic reconnection
-- **Price to Beat** — Multi-source resolution: Polymarket resolved data → Chainlink on-chain round walkback → SQLite cache, so the correct opening price is always shown instantly on page load
-- **Automated SL/TP** — OCO (One-Cancels-Other) trigger engine with atomic execution guards preventing double-fires
-- **Keyboard trading** — `Y` arm YES · `N` arm NO · `Enter` confirm · `Esc` cancel · `C` close position · `1–4` preset sizes
-- **Position tracker** — Open positions with live P&L, status badges, and one-click close
-- **Market history** — Last 5 resolved windows with outcomes cached in localStorage
-- **TradingView chart** — Embedded 1-minute BTC/USD candles with price-to-beat overlay line
-- **Silent reconnection** — API credentials cached in localStorage; no MetaMask popup on reload
-
----
+* Real-time order book streamed from Polymarket's CLOB WebSocket
+* Live BTC/USD feed from Kraken with automatic reconnection
+* Price-to-Beat resolution from three sources: Polymarket's resolved data, a Chainlink walkback on Polygon, and a local SQLite cache
+* Automated stop-loss and take-profit with concurrency guards to prevent double-fires
+* Keyboard shortcuts: `Y` / `N` to arm a side, `Enter` to confirm, `Esc` to cancel, `C` to close, `1`-`4` for preset sizes
+* Open positions tracker with live P&L and one-click close
+* Last 5 resolved windows cached in localStorage
+* Embedded TradingView chart with a price-to-beat overlay line
 
 ## Stack
 
 | Layer | Tech |
 |---|---|
-| Frontend | React 18, Vite 5, Tailwind CSS |
+| Frontend | Next.js 14 (App Router), React 18, TypeScript, Tailwind CSS |
 | Charts | TradingView Lightweight Charts |
-| Web3 | Ethers.js v5, MetaMask, Polygon mainnet |
-| Order execution | @polymarket/clob-client |
-| Backend | Node.js, WebSocket (ws), node-cron |
-| Persistence | better-sqlite3 |
-| Oracle | Chainlink BTC/USD on Polygon · Kraken WS |
-| Deployment | Vercel (frontend) + local Node server |
+| Web3 | Ethers v5, MetaMask, Polygon mainnet |
+| Order execution | `@polymarket/clob-client`, builder signing server-side |
+| Backend service | Node.js + `ws` (standalone process on port 3001) |
+| Persistence | `better-sqlite3` |
+| Oracles | Chainlink BTC/USD (Polygon) + Kraken WebSocket |
+| Hosting | Vercel (Next.js app) + self-hosted backend |
 
----
+## Running locally
 
-## Getting started
-
-**Prerequisites:** Node.js 18+, MetaMask with Polygon mainnet configured and USDC balance
+Requires Node.js 18+, a MetaMask wallet on Polygon mainnet, and some USDC.
 
 ```bash
 npm install
 npm run dev
 ```
 
-This starts the Node backend (port 3001) and Vite dev server concurrently. Open the Vite URL in your browser, connect your wallet, and the app auto-loads the current BTC 5m market.
+This runs the Next.js dev server and the standalone backend concurrently via `concurrently`. The backend listens on port 3001 and handles the Polymarket WebSocket proxy and SQLite reads. Open the Next.js URL, connect your wallet, and the current 5-minute market loads automatically.
 
-On startup the backend immediately fetches and stores the current window's Chainlink price — you'll see `[chainlink] stored <price>` in the terminal.
+## Price-to-Beat resolution
 
----
+Each window's opening price is resolved in this order:
 
-## How the Price to Beat works
+1. **Polymarket.** Once a window resolves, the exact opening price is exposed via their event API. This is the source of truth for any completed window.
+2. **Chainlink.** For the live window, the app walks back round IDs on Polygon's BTC/USD feed to find the round that was active at `windowStartMs`.
+3. **SQLite cache.** The backend snapshots each window's price on a cron, so page reloads show the correct value without an RPC round-trip.
 
-Each 5-minute window has a "Price to Beat" — the BTC/USD price at the exact moment the window opened. Rekti5 resolves this from three sources in order:
-
-1. **Polymarket** — once a window resolves, the exact price is available via their event API
-2. **Chainlink** — for the live window, walks back oracle round IDs on Polygon to find the round active at `windowStartMs`
-3. **SQLite cache** — the backend stores each window's price on a cron schedule, so page reloads show the value instantly without any RPC delay
-
----
+On Vercel (where the SQLite file is not available), the cache lookup returns 404 and the frontend falls back to Chainlink automatically.
 
 ## Architecture
 
 ```
-Browser (React)
-  ├── WebSocket ──────────────────→ Node backend (3001)
-  │                                    ├── WebSocket → Polymarket CLOB feed
-  │                                    ├── Cron (*/5 min) → Chainlink on Polygon
-  │                                    └── SQLite (resolution_prices.db)
-  ├── HTTP /price-to-beat ────────→ Node backend
-  ├── WebSocket → Kraken (BTC/USD)
-  ├── REST → Polymarket Gamma API
-  └── REST → Polymarket CLOB API
+Browser (Next.js / React)
+  │
+  ├── WebSocket  →  Node backend (:3001)
+  │                   ├── WS → Polymarket CLOB
+  │                   ├── Cron → Chainlink on Polygon
+  │                   └── SQLite (resolution_prices.db)
+  │
+  ├── HTTP /api/price-to-beat  →  Next route (SQLite read, 404 in prod)
+  ├── WebSocket  →  Kraken (BTC/USD)
+  ├── REST       →  Polymarket Gamma
+  └── REST       →  Polymarket CLOB (orders)
 ```
 
-The Node backend is local-only — Vercel deploys only the static frontend. When `/price-to-beat` returns 404 (Vercel), the hook falls back transparently to the Chainlink RPC path.
-
----
+Order signing happens client-side via `@polymarket/clob-client`. Builder credentials stay on the server and are never shipped to the browser.
 
 ## Key files
 
 ```
-server/index.js              Node backend — WS proxy, Chainlink cron, HTTP endpoint
-src/hooks/useStrikePrice.js  Price-to-beat resolution (server → Polymarket → Chainlink)
-src/hooks/useTriggerEngine.js  Automated SL/TP execution loop
-src/hooks/useWebSocket.js    Polymarket CLOB subscription + order book state
-src/hooks/useBtcPrice.js     Kraken live BTC/USD feed
-src/components/OrderEntry.jsx  Trade UI, keyboard state, order submission
-src/components/PositionsTable.jsx  Open positions + P&L
-vite.config.js               Dev proxies for all external APIs
-vercel.json                  Production rewrites
+app/page.tsx                      Entry point, renders <TradingApp />
+app/api/place-order/route.ts      Server-side order submission (keeps builder creds off the client)
+app/api/price-to-beat/route.ts    SQLite read for cached window prices
+components/TradingApp.tsx         Top-level UI shell
+components/OrderEntry.tsx         Trade panel, keyboard handlers, order submission
+components/PositionsTable.tsx     Open positions, live P&L
+hooks/useWebSocket.ts             Polymarket order book subscription
+hooks/useStrikePrice.ts           Price-to-Beat resolution chain
+hooks/useTriggerEngine.ts         Automated SL/TP loop
+hooks/useBtcPrice.ts              Kraken BTC/USD stream
+server/index.ts                   Standalone Node service (WS proxy + cron)
 ```
-
----
 
 ## Environment
 
-No `.env` file needed. The app uses MetaMask for signing — connect your wallet and your CLOB API key is derived on-chain. All external API calls are proxied through Vite (dev) or Vercel rewrites (prod) to avoid CORS.
+No `.env` is required for local development. The CLOB API key is derived from the connected wallet. For production, the server uses `POLYMARKET_BUILDER_ADDRESS` and `POLYMARKET_BUILDER_PRIVATE_KEY` to sign builder-attributed orders.
+
+## Notes
+
+* Ethers is pinned at v5 for `@polymarket/clob-client` compatibility.
+* `next.config.mjs` (not `.ts`) because Next.js 14 does not support a TypeScript config file.
+* The backend is a separate process by design. Folding it into a Next API route would lose the persistent WebSocket and the cron.
