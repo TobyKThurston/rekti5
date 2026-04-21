@@ -95,7 +95,8 @@ export default function TradingApp() {
           s.setPendingSide(null);
           break;
         case 'c': case 'C': {
-          const target = s.positions.length > 0 ? s.positions[s.positions.length - 1] : null;
+          const open = s.positions.filter(p => p.status === 'OPEN_POSITION');
+          const target = open.length > 0 ? open[open.length - 1] : null;
           if (target) s.closePosition(target);
           break;
         }

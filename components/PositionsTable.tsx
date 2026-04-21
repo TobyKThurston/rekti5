@@ -34,6 +34,13 @@ export function PositionsTable({ positions, market, closingPositionId, closePosi
     });
   }, [positions, market?.yesPrice, market?.noPrice]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const lastOpenId = useMemo(() => {
+    for (let i = livePositions.length - 1; i >= 0; i--) {
+      if (livePositions[i].status === 'OPEN_POSITION') return livePositions[i].id;
+    }
+    return null;
+  }, [livePositions]);
+
   return (
     <>
       <div className="flex items-center justify-between border-b border-[#22242a] px-2 py-[4px]">
@@ -64,7 +71,7 @@ export function PositionsTable({ positions, market, closingPositionId, closePosi
             ) : (
               livePositions.map((row, i) => {
                 const badge = STATUS_BADGE[row.status];
-                const isLatest = i === livePositions.length - 1;
+                const isLatest = row.id === lastOpenId;
                 return (
                   <tr key={row.id} className={i % 2 === 1 ? 'bg-[#131518]' : 'bg-transparent'}>
                     <td className={`border-b border-[#22242a] px-2 py-[3px] ${row.positive ? 'text-[#27c47c]' : 'text-[#e04f4f]'}`}>
