@@ -23,7 +23,6 @@ export function Header({
     <header className="fixed inset-x-0 top-0 z-20 h-11 border-b border-[#22242a] bg-[#131518] px-3">
       <div className="flex h-full items-center gap-4">
         <Link href="/" className="group flex items-center gap-2">
-          <span className="inline-block h-[7px] w-[7px] rounded-full bg-[#f09000]" />
           <span className="text-[13px] font-bold tracking-[0.18em] text-[#f09000] group-hover:text-[#ffa020] transition-colors">
             REKTI5
           </span>
@@ -40,7 +39,6 @@ export function Header({
               ? `$${btcPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
               : '—'}
           </span>
-          <span className="inline-block h-1.5 w-1.5 rounded-full bg-[#f09000]" />
         </div>
 
         <div className="flex-1" />

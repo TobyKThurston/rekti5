@@ -76,7 +76,7 @@ export function OrderEntry({
         max="100"
         value={sizePct}
         onChange={(e) => setSizePct(Number(e.target.value))}
-        className="mb-1.5 w-full accent-[#f09000]"
+        className="mb-1.5 w-full accent-[#8a919c]"
       />
       <div className="mb-2 grid grid-cols-5 gap-1">
         {SIZE_PRESETS.map(({ dollars, key }) => {

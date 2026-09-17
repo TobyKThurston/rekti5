@@ -4,6 +4,9 @@ const require = createRequire(import.meta.url);
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  async redirects() {
+    return [{ source: '/', destination: '/terminal', permanent: false }];
+  },
   async rewrites() {
     return [
       { source: '/gamma-api/:path*', destination: 'https://gamma-api.polymarket.com/:path*' },
